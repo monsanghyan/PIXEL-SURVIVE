@@ -159,11 +159,14 @@ canvas#logoCv{width:min(260px,70%);height:auto;image-rendering:pixelated;margin:
 <button class="down" data-key="ArrowDown">▼</button>
 <button class="right" data-key="ArrowRight">▶</button>
 </div>
-<button id="dashTouch">대시</button>
+ <button id="dashTouch">대시</button>
+ <button id="skillTouch">스킬</button>
 </div>
 <div id="help">
 <b>시작</b>: 무기 1개를 고르면 레벨업에서 그 무기만 강화할 수 있습니다. 6단계까지 강화하면 다음 레벨업에 ✦ 특수 강화가 반드시 등장합니다.<br>
-<b>특수 능력 슬롯 3칸</b>: 구체·레이저·냉기·번개·유성·오라·센트리 드론·지뢰·충격파 중 서로 다른 3종류까지, 각 최대 5단계.<br>
+<b>특수 능력 슬롯 3칸</b>: 구체·레이저·냉기·번개·유성·오라·센트리 드론·지뢰·충격파·토네이도 중 서로 다른 3종류까지, 각 최대 5단계.<br>
+<b>진화 조건</b>: 무기 6단계 + 무기별 <b>필요 특수 능력</b> 1개 + <b>필요 버프</b> 1개를 모두 가져야 ✦ 특수 강화가 나옵니다 (레벨업 카드에 ★진화 재료 표시, 좌측 하단 체크리스트).<br>
+<b>무기 스킬 [SPACE]</b>: 무기 3레벨 + 필요 특수 능력/버프 중 하나를 가지면 해금. 무기마다 다른 스킬과 쿨타임이 있습니다. 대시는 <b>Shift</b>.<br>
 <b>버프 슬롯 4칸</b>: 주문력·공격력·치명타·보호막·체력 증가·경험치·자석·흡혈·이동 속도·공격 속도 중 서로 다른 4종류까지, 각 최대 5단계. 공격 속도는 도끼·돌격창·저격총에서 나오지 않고, 도끼·저격총은 <b>무기 크기 증가</b>, 돌격창은 <b>창 집중</b>(추가 돌진 필요 관통 수 감소)가 대신 나옵니다. 좌측 하단 작은 아이콘이 고른 버프입니다.<br>
 <b>HEAL</b>: 최대 체력의 75% 즉시 회복. 슬롯과 횟수 제한이 없습니다.<br>
 <b>조준</b>: 미사일을 제외한 무기는 마우스 방향으로 발사하며 누르고 있는 동안 공격합니다. <b>자동발사</b>(F 키)를 켜면 가까운 적을 자동으로 조준합니다(터치 기기는 기본 ON). <b>소리</b>: 메인 메뉴/ESC의 설정 화면 또는 M 키.<br>
@@ -250,6 +253,9 @@ const SFX={
  boom:[.07,()=>{noise(.28,.13,700,'lowpass',150);tone(130,.25,'sine',.14,40)}],
  nova:[.2,()=>{tone(900,.5,'sine',.1,200);noise(.45,.09,5000,'highpass')}],
  chain:[.08,()=>{noise(.12,.1,2500,'bandpass',600);tone(1300,.1,'sawtooth',.06,300)}],
+ theworld:[.3,()=>{tone(70,1.2,'sine',.3,40);tone(220,.15,'square',.12,110);tone(330,.15,'square',.1,165,.18);noise(.6,.12,300,'lowpass',80);tone(880,.05,'square',.08,0,.5)}],
+ timeresume:[.2,()=>{tone(300,.35,'triangle',.14,900);noise(.3,.08,2000,'highpass',4000)}],
+ tornado:[.15,()=>{noise(.8,.12,300,'bandpass',1400);tone(110,.7,'sawtooth',.05,220)}],
  meteor_fall:[.1,()=>{ // ☄ 낙하: 하늘을 가르는 휘파람 + 불타는 바람 소리
   tone(1900,.5,'sawtooth',.045,260);tone(1300,.5,'triangle',.05,180);
   noise(.5,.07,4200,'bandpass',500);
@@ -339,8 +345,23 @@ const CONFIG={
  // [신규] 흡혈: 처치 시 확률로 체력 회복
  vamp:{max:5,chancePerLevel:.04,ratioPerLevel:.006,cap:.015}, // 적중 시 확률(레벨당) 로 준 피해의 비율(레벨당)만큼 회복, 1회 회복 상한 = 최대체력×cap
  // [신규] 보스: first초에 첫 등장, 이후 interval초마다. 처치할수록 체력/탄 증가
- boss:{first:60,interval:80,hp:650,hpStep:.9,speed:36,dmg:26,r:34,
+ boss:{first:60,interval:80,hp:800,hpStep:.95,speed:36,dmg:26,r:34,
   ringSpeed:170,ringDmg:12,ringBase:14,charge:430,attackEvery:3.6,reward:8},
+ // [신규] 토네이도(칼 진화 재료): 적을 끌어당기며 지속 피해, 가까운 적을 따라 이동
+ tornado:{max:5,cooldown:7,cooldownStep:.7,minCooldown:3.4,life:4.5,speed:95,radius:50,radiusStep:7,dps:70,dpsStep:32,tick:.2,pull:2.4,counts:[1,1,2,2,3]},
+ // [신규] 무기 스킬 (SPACE): 쿨타임·수치
+ ws:{
+  pistol:{cd:14,range:430,r:175,dmg:520,stun:2.6,shards:16},                                   // 섬광 수류탄
+  missile:{cd:28,speed:560,cols:.11,gap:64,dmg:150,r:64},                                      // 융단 폭격
+  boomerang:{cd:20,jump:.62,r:195,dmg:480,bolts:10,boltLen:340,boltDmg:380,boltW:24},          // 낙뢰 강타
+  sniper:{cd:30,time:4.5},                                                                     // 더 월드(시간 정지)
+  sword:{cd:11,dist:300,dur:.22,dmg:420,burstR:150,burstDmg:320},                              // 질풍 일섬
+  machinegun:{cd:26,time:5,shield:160},                                                        // 경기관총 전개
+  drill:{cd:24,dig:2.6,moundT:3.5,moundDmg:55,popR:215,popDmg:720,root:3},                     // 지중 잠행
+  lance:{cd:24,time:7,r:240,slow:.45},                                                         // 해일 영역
+  bow:{cd:22,charge:2,speed:1500,dmg:950,tick:140,w:46},                                       // 파괴의 화살
+  claw:{cd:18,time:1.8,r:230,ticks:12,dmg:120,heal:.5,healCap:.3}                              // 블러드 스톰
+ },
  // [신규] 유성: 무작위 적 위치에 낙하 (레벨 2·4·6에서 낙하 수 +1)
  meteor:{max:5,cooldown:3,cooldownStep:0,minCooldown:1.4,damage:130,damageStep:55,radius:62,radiusStep:9,fall:.5,lavaTime:2.5,lavaDps:.3}, // fall=낙하 시간(유도 추적), lava=착탄 후 용암 지대(피해의 lavaDps배/초)
  // [신규] 화염 오라: 주변 적에게 지속 피해
@@ -358,7 +379,7 @@ const CONFIG={
  // [신규] 센트리 드론: 플레이어 주위를 돌며 멀리 있는 적을 자동 포격 (counts = 레벨별 드론 수)
  sentry:{max:5,counts:[1,2,2,3,3],cd:1,cdStep:.09,minCd:.55,damage:34,damageStep:15,blastR:34,blastStep:5,range:560,speed:780},
  // [신규] 최종 보스: time초에 모든 적이 사라지고, calm+warn초 뒤 등장. 처치하면 엔딩 (hp로 난이도 조절)
- final:{time:420,calm:3,warn:3.2,hp:85000,speed:42,dmg:26,r:50,charge:460,attackEvery:2.3,bulletDmg:12,ringSpeed:165,fanSpeed:255},
+ final:{time:420,calm:3,warn:3.2,hp:100000,speed:42,dmg:26,r:50,charge:460,attackEvery:2.3,bulletDmg:12,ringSpeed:165,fanSpeed:255},
  // [신규] 특수 강화: 무기를 need단계까지 강화하면 다음 레벨업에 해당 무기의 특수 강화가 반드시 등장
  special:{need:6,
   pistolGrow:3, // 권총 ✦: 탄환이 사거리 끝에서 최대 몇 배까지 커지는지 (피해도 크기에 비례)
@@ -414,6 +435,7 @@ const skills=[
  ['유성 낙하','밀집한 적을 추적해 유성 낙하 + 용암 지대 (피해·범위·개수 증가)','meteor',CONFIG.meteor.max],
  ['센트리 드론','자율 포격 드론: 멀리 있는 적을 자동으로 저격 (드론 수·피해·연사·폭발 범위 증가)','sentry',CONFIG.sentry.max],
  ['화염 오라','주변 적을 태우는 화염 오라 (범위·피해 증가)','aura',CONFIG.aura.max],
+ ['토네이도','회전하며 적을 끌어당기고 지속 피해를 주는 토네이도 소환 (개수·크기·피해 증가, 쿨다운 감소)','tornado',CONFIG.tornado.max],
  ['주문력','주문력 +15%: 구체·레이저·냉기·번개·유성·오라 피해 증가','spell',5],
  ['BOOMERANG','도끼를 던졌다 받으면 즉시 재투척, 레벨업마다 도끼 속도 증가, Lv.3에서 도끼 +1 (공격력·치명타 적용)','boomerang',6],
  ['HOMING MISSILE','유도 미사일 (Lv.3·5에서 미사일 +1, 최대 3발 / 레벨업마다 폭발 범위·피해 증가) (공격력·치명타 적용)','missile',6],
@@ -444,7 +466,7 @@ const skills=[
 
 // ===== [신규] 무기 시스템: 시작 시 하나를 고르고, 레벨업에서는 고른 무기만 강화 =====
 // 특수 능력: 서로 다른 3종류까지만 획득 가능 (3종을 고르면 그 외 능력 강화는 등장하지 않음)
-const ABIL=['orb','laser','nova','chain','meteor','aura','sentry','mine','wave'];
+const ABIL=['orb','laser','nova','chain','meteor','aura','sentry','mine','wave','tornado'];
 const abilCount=()=>ABIL.filter(k=>lv(k)>0).length;
 // 버프 능력: 서로 다른 4종류까지만 획득 가능 (4종을 고르면 그 외 버프 강화는 등장하지 않음)
 // 무기 특화 버프: 도끼·저격총=WEAPON SIZE, 돌격창=LANCE FOCUS, 그 외 무기=RAPID FIRE (한 슬롯을 차지)
@@ -524,7 +546,7 @@ function reset(){
   chainLevel:0,chainCd:1,spell:1,weapon:null,wsel:false,slashes:[],fx:[],shake:0,acd:{boomerang:1,missile:1,wave:1,mine:1,sniper:1,sword:1,machinegun:1},proj:[],waves:[],mines:[],meteorCd:1,meteors:[],zones:[],dark:0,nextEvent:CONFIG.events.first,eb:[],boss:null,nextBoss:CONFIG.boss.first,bossCount:0,bossKills:0,
   shieldMax:0,shield:0,shieldT:0,drills:[],lance:null,bowCharge:0,bowCd:0,mom:0,mom2:0,frenzy:false,clawT:0,moving:false,lateMsg:false,axeClicks:mouse.clicks,axeGap:0,storm:0,stormT:0,blood:0,ivx:0,ivy:0,aim:0,recoil:0,muzzle:0,swing:null,swingDir:1,axeSlots:[],freeze:0,throwT:0,aspd:1,spForce:false,spDone:false,mgN:0,
   pierce:0,crit:0,regen:0,regenT:0,hitT:0,xpMult:1,sentryT:0,moveAng:0,stillT:0,sniperG:0,gorbs:[],szones:[],lbeams:[],bbeams:[],bstrikes:[],dbul:[],finalStage:0,finalT:0,ending:false,endT:0,endX:0,endY:0,won:false,
-  paused:false,choose:false,choices:[],over:false,skillCounts:{},msg:'',msgT:0
+  paused:false,choose:false,choices:[],over:false,skillCounts:{},msg:'',msgT:0,tornados:[],torCd:1,ws:{cd:0,unl:false,evo:false},tstop:0,tsMax:0,tsFlash:0,flash:0,banner:null,nades:[],bombs:[],carpet:null,slam:null,tbolts:[],gale:null,gtrail:[],hmg:0,tshield:0,tshMax:0,dig:null,mounds:[],waterZ:null,bowSk:null,garrow:null,bstorm:null,noAtk:false
  };
 }
 
@@ -549,6 +571,7 @@ function hurtPlayer(n){
  n*=CONFIG.player.dmgTaken; // 적·환경 피해 감소
  if(sniperFull())n*=1-CONFIG.atk.sniper.stillDef;
  // 스나이퍼 풀충전: 받는 피해 감소
+ if(s.tshield>0){const a=Math.min(s.tshield,n);s.tshield-=a;n-=a}
  if(s.shield>0){
   const a=Math.min(s.shield,n);
   s.shield-=a;n-=a;
@@ -593,15 +616,15 @@ const ENEMY={
  marksman:[28,34,10,'#ffd36a',5,9]    // 저격수: 붉은 조준선 후 빠른 탄
 };
 function lateKind(time){
- if(time<120||Math.random()>(time>180?.5:.3))return null;
- const pool=[['charger',120,3],['gnat',130,2],['armored',150,3],['teleporter',170,2.5],['marksman',185,2.5],['healer',200,2],['giant',240,time>360?1.6:.7]].filter(p=>time>=p[1]);
+ if(time<100||Math.random()>(time>180?.58:.38))return null;
+ const pool=[['charger',100,3],['gnat',115,2],['armored',130,3],['teleporter',150,2.5],['marksman',165,2.5],['healer',180,2],['giant',210,time>330?1.8:.9]].filter(p=>time>=p[1]);
  let r=Math.random()*pool.reduce((a,p)=>a+p[2],0);
  for(const p of pool){r-=p[2];if(r<=0)return p[0]}
  return pool[0][0];
 }
 function mkEnemy(kind,x,y){
- const d=ENEMY[kind],time=state.time,scale=1+time/145;
- return{x,y,hp:d[0]*scale*1.4,maxhp:d[0]*scale*1.4,speed:d[1]*(1+time/300),dmg:d[2]*(1+time/360),c:d[3],xp:d[4],r:d[5],kind,hit:0,def:ENEMY_DEF[kind]||1};
+ const d=ENEMY[kind],time=state.time,scale=1+time/110; // [강화] 체력 증가 폭 확대
+ return{x,y,hp:d[0]*scale*1.55,maxhp:d[0]*scale*1.55,speed:d[1]*(1+time/250),dmg:d[2]*(1+time/290),c:d[3],xp:d[4],r:d[5],kind,hit:0,def:ENEMY_DEF[kind]||1};
 }
 
 // ===== [신규] 보스 =====
@@ -888,7 +911,7 @@ function bossAI(e,dt,vx,vy){
 }
 
 // ===== [신규] 평타 계열 능력 (공격력 + 치명타 적용) =====
-const acd=(k,l)=>{const c=CONFIG.atk[k],m=k===state.weapon?state.aspd:1;return Math.max(c.min*.5,Math.max(c.min,c.cooldown-(l-1)*c.cdStep)*m)}; // 공속 강화는 선택 무기에 적용
+const acd=(k,l)=>{const c=CONFIG.atk[k],m=k===state.weapon?state.aspd:1,h=k==='machinegun'&&state.hmg>0?3:1;return Math.max(c.min*.5/h,Math.max(c.min,c.cooldown-(l-1)*c.cdStep)*m/h)}; // 공속 강화는 선택 무기에 적용
 const adm=(k,l)=>{const c=CONFIG.atk[k];return c.damage+(l-1)*c.step};
 function atkHit(e,base,cb=0,noCrit=false){
  const s=state,crit=!noCrit&&Math.random()<Math.min(.95,s.crit+cb);
@@ -1107,7 +1130,7 @@ const lanceNeed=l=>{const C=CONFIG.atk.lance;return Math.max(C.needMin,C.need-Ma
 const lanceCount=L=>L.cnt.size;
 function startLance(a,l,chain=0){
  const s=state,C=CONFIG.atk.lance;
- s.lance={dx:Math.cos(a),dy:Math.sin(a),remain:C.dist+(l-1)*C.distStep,hit:new Set(),cnt:new Set(),dmg:adm('lance',l),w:C.width+(l-1)*C.widthStep,chain,l,need:lanceNeed(l)+chain,acc:0};
+ s.lance={dx:Math.cos(a),dy:Math.sin(a),remain:C.dist+(l-1)*C.distStep,hit:new Set(),cnt:new Set(),dmg:adm('lance',l),w:C.width+(l-1)*C.widthStep,chain,l,need:lanceNeed(l)+(inWater()?0:chain),acc:0};
  s.aim=a;s.invuln=Math.max(s.invuln,.25);burst(s.px,s.py,'#9fe8ff',8);
 }
 // ✦ 특수: 경로 위의 큰 폭발 (폭발에만 맞은 적은 관통 수에 세지 않음)
@@ -1132,8 +1155,9 @@ function lanceUpdate(dt){
  if(L.remain>0)return;
  if(sp)lanceBlast(L); // 도착 지점에서도 폭발
  if(lanceCount(L)>=L.need){ // 추가 공격 발동 (다음 돌진은 필요 관통 수 +1)
-  let a;
-  if(!autoFire)a=s.aim; // 수동 조준: 추가 돌진도 마우스 방향
+  let a;const wt=waterTarget();
+  if(wt)a=Math.atan2(wt.y-s.py,wt.x-s.px); // 해일 영역: 영역 안의 적 우선
+  else if(!autoFire)a=s.aim; // 수동 조준: 추가 돌진도 마우스 방향
   else{const t=nearestEnemy(s.px,s.py,420);a=t?Math.atan2(t.y-s.py,t.x-s.px):Math.atan2(L.dy,L.dx)}
   s.fx.push({x:s.px,y:s.py-26,vy:-60,life:.9,txt:'EXTRA ATTACK ×'+(L.chain+1)+'!'});
   startLance(a,L.l,L.chain+1);return;
@@ -1192,16 +1216,16 @@ function clawUpdate(dt){
  }
 }
 
-function attackUpdate(dt){
- const s=state,P=CONFIG.atk,SP=CONFIG.special;
- axeUpdate(dt);drillUpdate(dt);bowUpdate(dt);clawUpdate(dt);lanceUpdate(dt);
- mgFireUpdate(dt);
+function attackUpdate(dt,wdt){
+ const s=state,P=CONFIG.atk,SP=CONFIG.special,ts=s.tstop>0; // ts: 시간 정지 중에는 탄환·충격파·지뢰가 멈춤(발사는 계속)
+ if(!s.noAtk){axeUpdate(dt);drillUpdate(dt);bowUpdate(dt);clawUpdate(dt);lanceUpdate(dt)}
+ mgFireUpdate(wdt);
  for(const k in P){
   if(k==='boomerang'||k==='drill'||k==='bow'||k==='pistol')continue; // pistol은 shoot()로 따로 발사 (설정값만 CONFIG.atk에 있음)
   const l=lv(k);if(!l)continue;
   s.acd[k]-=dt*(k==='sniper'&&s.sniperG>=1?1+(l>=6?P.sniper.stillReloadMax:P.sniper.stillReload):1); // 스나이퍼: 가만히 있으면 재장전 가속
-  if(s.acd[k]>0)continue;
-  if(k==='mine'){
+   if(s.acd[k]>0||s.noAtk)continue;
+   if(k==='mine'){
    // 플레이어 주변 일정 범위에 무작위 설치 (레벨업: 개수↑ 쿨타임↓)
    const M=P.mine,n=M.counts[Math.min(l,M.counts.length)-1],cap=M.cap+n*2;
    for(let i=0;i<n&&s.mines.length<cap;i++){
@@ -1220,8 +1244,9 @@ function attackUpdate(dt){
   if(k==='lance'){
    if(s.lance)continue;
    let a;
-   if(autoFire){const t=nearestEnemy(s.px,s.py,320);if(!t)continue;a=Math.atan2(t.y-s.py,t.x-s.px)}
-   else{if(!mouse.down)continue;a=s.aim}
+   const wt=waterTarget(); // 해일 영역: 영역 안의 적을 우선 추적
+   if(autoFire){const t=wt||nearestEnemy(s.px,s.py,320);if(!t)continue;a=Math.atan2(t.y-s.py,t.x-s.px)}
+   else{if(!mouse.down)continue;a=wt?Math.atan2(wt.y-s.py,wt.x-s.px):s.aim}
    s.acd[k]=acd(k,l);sfx('w_'+k);startLance(a,l);continue;
   }
   if(k==='claw'){
@@ -1312,6 +1337,7 @@ function attackUpdate(dt){
   }
  }
  s.proj.forEach(p=>{
+  if(ts)return;
   if(p.t==='boom'){
    const mv=p.spd*dt;p.rot+=dt*(10+p.spd*.02);
    if(p.out){
@@ -1387,6 +1413,7 @@ function attackUpdate(dt){
  });
  s.proj=s.proj.filter(p=>!p.dead);
  s.waves.forEach(w=>{
+  if(ts)return;
   w.r+=P.wave.speed*dt;
   s.enemies.forEach(e=>{
    if(e.hp<=0||w.hit.has(e))return;
@@ -1400,6 +1427,7 @@ function attackUpdate(dt){
  });
  s.waves=s.waves.filter(w=>!w.dead);
  s.mines.forEach(m=>{
+  if(ts)return;
   m.t-=dt;m.arm-=dt;
   if(m.arm<=0&&s.enemies.some(e=>e.hp>0&&Math.hypot(e.x-m.x,e.y-m.y)<e.r+22)){
    s.enemies.forEach(e=>{ // 폭발과 함께 적을 지뢰 중심으로 끌어당김 (보스는 약하게)
@@ -1854,7 +1882,8 @@ function abilInfo(k){
  if(k==='sentry')return['🛸',Math.max(0,s.sentryT),sentryStats(l).cd];
  if(k==='mine')return['💣',Math.max(0,s.acd.mine),acd('mine',l)];
  if(k==='wave')return['🌊',Math.max(0,s.acd.wave),acd('wave',l)];
- if(k==='orb')return['🔮',0,1];
+ if(k==='tornado')return['🌪️',Math.max(0,s.torCd),torStats(l).cd];
+  if(k==='orb')return['🔮',0,1];
  if(k==='aura')return['🔥',0,1];
  return['🛡️',0,1,s.shieldMax?s.shield/s.shieldMax:0]; // 방패: 남은 용량 게이지
 }
@@ -1910,13 +1939,18 @@ function levelUp(){
  const w=s.weapon,spk=SPECIAL[w],need=CONFIG.special.need;
  // 다른 무기 전용 강화 제외, 특수 강화는 해당 무기가 need단계 이상일 때만 풀에 포함
  const pool=skills.filter(k=>lv(k[2])<k[3]&&!(WEAPONS.includes(k[2])&&k[2]!==w)&&!(WEAPON_ONLY[k[2]]&&WEAPON_ONLY[k[2]]!==w)&&!(k[2]==='rate'&&(w==='boomerang'||w==='lance'||w==='sniper'))&&!(k[2]==='wsize'&&w!=='boomerang'&&w!=='sniper')&&!(ABIL.includes(k[2])&&!has(k[2])&&abilCount()>=3)&&!(BUFF.includes(k[2])&&!has(k[2])&&buffCount()>=4)
-  &&!(SP_OWNER[k[2]]&&!(SP_OWNER[k[2]]===w&&wUp(w)>=need)));
+  &&!(SP_OWNER[k[2]]&&!(SP_OWNER[k[2]]===w&&evoReady(w))));
  s.choices=pool.sort(()=>Math.random()-.5).slice(0,3);
  // 선택한 무기 강화가 50% 확률로 반드시 등장 (권총은 다중 탄환/관통 중 하나)
  const wpool=pool.filter(k=>k[2]===w);
  const ws=wpool[Math.random()*wpool.length|0];
  if(ws&&!s.choices.includes(ws)&&Math.random()<.5)s.choices[0]=ws;
- // ✦ 무기를 need단계까지 강화한 직후의 레벨업에는 특수 강화가 반드시 포함
+  // ★ 진화 재료(필요 특수 능력/버프)가 아직 없으면 일정 확률로 선택지에 끼워 넣음 (슬롯이 비어 있을 때만)
+  if(EVO[w]){
+   const miss=EVO[w].map(q=>pool.find(x=>x[2]===q&&!has(q))).filter(Boolean);
+   if(miss.length&&Math.random()<.35){const pk=miss[Math.random()*miss.length|0];if(!s.choices.includes(pk)){let i=s.choices.findIndex(c=>c!==ws&&!(EVO[w].includes(c[2])));if(i<0)i=0;if(s.choices.length)s.choices[i]=pk;else s.choices.push(pk)}}
+  }
+ // ✦ 진화 조건(무기 만렙 + 필요 특수 능력 + 필요 버프)을 모두 갖춘 직후의 레벨업에는 특수 강화가 반드시 포함
  if(s.spForce&&spk){
   const sp=pool.find(k=>k[2]===spk);
   if(sp){
@@ -1948,6 +1982,7 @@ function apply(sk){
  else if(k==='chain'){s.chainLevel=lv(k);s.chainCd=.3}
  else if(k==='meteor')s.meteorCd=.5;
  else if(k==='sentry')s.sentryT=.4;
+ else if(k==='tornado')s.torCd=.5;
  else if(k==='spell')s.spell*=CONFIG.spell.perLevel;
  else if(CONFIG.atk[k])s.acd[k]=.4;
  else if(k==='shield'){s.shieldMax=lv(k)*CONFIG.shield.perLevel;s.shield=s.shieldMax}
@@ -1957,7 +1992,7 @@ function apply(sk){
  else if(k==='xp')s.xpMult=1+.3*lv(k); // 레벨당 +30% (합연산)
  // 무기 강화 횟수가 기준에 도달하면 다음 레벨업에 특수 강화가 반드시 등장
  const wk=s.weapon,spk=SPECIAL[wk];
- if(spk&&!s.spDone&&wUp(wk)>=CONFIG.special.need){s.spDone=true;s.spForce=true}
+ if(spk&&!s.spDone&&evoReady(wk)){s.spDone=true;s.spForce=true;say('✦ 진화 조건 달성! 다음 레벨업에 특수 강화 등장')}
  s.choose=false;
  overlay.style.display='none';
  say(SP_OWNER[k]?'✦ '+sk[0]+' 해금!':k==='heal'?'체력 75% 회복!':sk[0]+' Lv.'+lv(k)+' 획득!');
@@ -1967,11 +2002,11 @@ function apply(sk){
 
 
 // ===== 아이콘 / 짧은 설명 =====
-const ABIL_ICON={orb:'🔵',laser:'🔆',nova:'❄️',chain:'⚡',meteor:'☄️',aura:'🔥',sentry:'🤖',mine:'💣',wave:'🌊'};
+const ABIL_ICON={orb:'🔵',laser:'🔆',nova:'❄️',chain:'⚡',meteor:'☄️',aura:'🔥',sentry:'🤖',mine:'💣',wave:'🌊',tornado:'🌪️'};
 const MISC_ICON={heal:'💚'};
 const SHORT={speed:'이동 속도 +12%, 대시 쿨타임 -15%',damage:'공격력 +18%',rate:'공격 속도 +18%',wsize:'무기 크기 증가',hp:'최대 체력 +35 · 즉시 회복',heal:'체력 75% 회복',magnet:'경험치 흡수 범위 증가',
  orb:'구체 수·피해 증가, 탄막 차단',pistol:'피해 증가 · 탄환 +1 · 관통 +1',laser:'관통 레이저 강화',nova:'냉기 폭발 범위·피해 증가',chain:'번개 튕김 횟수·피해 증가',shield:'보호막 용량·재충전 증가',vamp:'적중 시 확률로 체력 회복',
- meteor:'유성 피해·범위·개수 증가',sentry:'자동 포격 드론 증가',aura:'화염 오라 범위·피해 증가',spell:'주문력 +15%',boomerang:'도끼 속도 증가 · Lv.3에 +1개',missile:'폭발 범위·피해 증가 · Lv.3·5에 +1발',
+ meteor:'유성 피해·범위·개수 증가',tornado:'토네이도 개수·크기·피해 증가',sentry:'자동 포격 드론 증가',aura:'화염 오라 범위·피해 증가',spell:'주문력 +15%',boomerang:'도끼 속도 증가 · Lv.3에 +1개',missile:'폭발 범위·피해 증가 · Lv.3·5에 +1발',
  wave:'충격파 범위·피해 증가',mine:'지뢰 개수 증가 · 쿨타임 감소',sniper:'관통 저격 · 가만히 있으면 충전',sword:'베기 범위·속도 증가',machinegun:'매우 빠른 연사',crit:'치명타 확률 +10%',xp:'경험치 획득 +30%',
  drill:'초근접 연속 타격 · Lv.3에 드릴 +1',lance:'돌진 관통 · 10명 이상이면 연속 돌진',lanceneed:'추가 돌진 필요 관통 수 -1',bow:'오래 누를수록 강한 화살',claw:'이동할수록 빨라지고 강해짐',
  sp_pistol:'탄환이 점점 커지며 크기만큼 피해 증가 (최대 3배)',sp_boomerang:'도끼 +2개 · 사거리↑ · 정점 폭발',sp_missile:'폭발 시 소형탄 3발 분열',sp_sniper:'풀충전 시 능력 피해 2배 · 처치 시 확률로 능력 발동',sp_sword:'관통 검기 발사',
@@ -1998,7 +2033,8 @@ function showChoices(){
   const slot=ABIL.includes(k)?` · 능력 ${abilCount()+(has(k)?0:1)}/3`:BUFF.includes(k)?` · 버프 ${buffCount()+(has(k)?0:1)}/4`:'';
   b.innerHTML=`<span class="no">${i+1}</span>`;
   b.appendChild(skillIcon(k));
-  b.insertAdjacentHTML('beforeend',`<b>${sk[0]}</b><em>${lvTxt}${slot}</em><small>${SHORT[k]||sk[1]}</small>`);
+  const mat=EVO[state.weapon]&&EVO[state.weapon].includes(k)?' · <span style="color:#ffd55c">★진화 재료</span>':'';
+   b.insertAdjacentHTML('beforeend',`<b>${sk[0]}</b><em>${lvTxt}${slot}${mat}</em><small>${SHORT[k]||sk[1]}</small>`);
   b.onclick=()=>apply(sk);
   box.appendChild(b);
  });
@@ -2096,6 +2132,7 @@ function skillLevelStats(k,l){
   case 'nova':{const N=C.nova;rows=[['재사용 대기시간',n1(Math.max(2.5,N.cooldown-(l-1)*N.cooldownStep))+'초'],['폭발 반경',rngLabel(N.radius+(l-1)*N.radiusStep)],['피해',n1(N.damage*Math.pow(N.damagePerLevel,l-1))],['효과','적 둔화']];note=abilNote;break}
   case 'chain':{const o=chainStats(l);rows=[['재사용 대기시간',n1(o.cooldown)+'초'],['피해',n1(o.damage)],['튕김 횟수',o.bounces+'회'],['첫 목표 탐색 거리',rngLabel(C.chain.range)],['튕김 거리',C.chain.bounceRange+'px']];note=abilNote;break}
   case 'meteor':{const M=C.meteor;rows=[['재사용 대기시간',n1(meteorCdMax(l))+'초'],['낙하 수',(1+((l+1)>>1))+'개'],['용암 지대',M.lavaTime+'초 (초당 피해 '+Math.round(M.lavaDps*100)+'%)'],['피해',n1(M.damage+(l-1)*M.damageStep)],['폭발 반경',(M.radius+(l-1)*M.radiusStep)+'px']];note=abilNote+' 적이 밀집한 곳을 노리고 낙하 중에도 목표를 추적합니다. 착탄 후 용암 지대가 남습니다.';break}
+  case 'tornado':{const o=torStats(l),T=C.tornado;rows=[['재사용 대기시간',n1(o.cd)+'초'],['토네이도 수',o.n+'개'],['반경',n1(o.r)+'px'],['초당 피해',n1(o.dps)],['지속 시간',T.life+'초'],['효과','적을 끌어당기고 둔화']];note=abilNote+' 가까운 적을 따라 이동하며 끌어당깁니다. (칼의 진화 재료)';break}
   case 'aura':{const o=auraStats(l);rows=[['범위(반경)',n1(o.r)+'px'],['초당 피해',n1(o.dps)]];note=abilNote+' 주변 적을 지속적으로 태웁니다.';break}
   case 'sentry':{const o=sentryStats(l);rows=[['드론 수',o.n+'기'],['포격 간격',n1(o.cd)+'초'],['포격 피해',n1(o.dmg)],['폭발 반경',n1(o.r)+'px'],['사거리',rngLabel(C.sentry.range)]];note=abilNote;break}
   case 'mine':{const M=C.atk.mine;rows=[['설치 개수',M.counts[Math.min(l,M.counts.length)-1]+'개'],['재설치 간격',n1(Math.max(M.min,M.cooldown-(l-1)*M.cdStep))+'초'],['피해',n1(M.damage+(l-1)*M.step)],['폭발 반경',(M.radius+l*M.rStep)+'px'],['유지 시간',M.life+'초'],['설치 범위',M.minRange+'~'+M.range+'px']];note='※ 공격력·주문력이 적용되고 치명타는 적용되지 않습니다. 폭발하며 적을 중심으로 끌어당깁니다.';break}
@@ -2245,8 +2282,9 @@ function renderDexDetail(box){
  if(dexTab==='weapon'){
   const sk=skillEntry(id),eng=WINFO[id][0].split(' ')[0],spe=skillEntry(SPECIAL[id]);
   box.appendChild(dexHeader(skillIcon(id),`${wName(id)} <small>${eng}</small>`,`최대 Lv.6 · ✦ ${spe?spe[0]:''}`,sk?sk[1]:WINFO[id][1]));
-  box.appendChild(buildLevelBox(id));
- }else if(dexTab==='enemy'){
+   box.appendChild(buildLevelBox(id));
+   box.insertAdjacentHTML('beforeend',evoInfoHtml(id));
+  }else if(dexTab==='enemy'){
   const boss=!!BINFO[id],fin=id==='final';let name,desc,rows,meta;
   if(fin){const F=CONFIG.final;name='OVERLORD';meta='최종 보스';desc='모든 몬스터가 사라진 뒤 나타나는 정사각형 거신. 3페이즈로 강해지며 체력 구간마다 무적 배리어와 수호 몬스터를 전개하며, 배리어가 깨지면 잠시 기절한다. 나선·링·부채꼴 탄막, 낙하 공격, 레이저, 돌진을 구사한다.';rows=[['체력',F.hp.toLocaleString()],['이동 속도',F.speed],['접촉 피해',F.dmg],['크기',F.r*2+'px'],['등장','7:00 이후']]}
   else if(boss){const B=CONFIG.boss,inf=BINFO[id],i=BTYPES.indexOf(id);name=inf[0];meta='보스';desc=BOSS_INFO[id];rows=[['체력(기본)',Math.round(B.hp*inf[2])+'~'],['등장',tmLabel(B.first+i*B.interval)],['재등장',`${B.interval}초 간격으로 순환`]]}
@@ -2493,6 +2531,384 @@ function drawHeld(){
 }
 
 // ===== 업데이트 =====
+// =====================================================================
+// [신규] 진화 조건 · 무기 스킬(SPACE) · 토네이도
+//  - 특수 진화: 무기 만렙(6) + 필요 특수 능력 + 필요 버프를 모두 보유해야 등장
+//  - 무기 스킬: 무기 Lv.3 이상 + 필요 특수 능력/버프 중 하나 이상 보유 시 해금, SPACE로 사용 (개별 쿨타임)
+// =====================================================================
+const EVO={pistol:['laser','xp'],missile:['sentry','crit'],boomerang:['chain','wsize'],sniper:['mine','spell'],sword:['tornado','shield'],
+ machinegun:['aura','rate'],drill:['meteor','magnet'],lance:['wave','lanceneed'],bow:['nova','damage'],claw:['orb','vamp']};
+const evoReady=w=>!!EVO[w]&&wUp(w)>=CONFIG.special.need&&has(EVO[w][0])&&has(EVO[w][1]);
+const wskillUnlocked=w=>!!EVO[w]&&wUp(w)>=3&&(has(EVO[w][0])||has(EVO[w][1]));
+const upName=k=>{const e=skills.find(x=>x[2]===k);return e?e[0]:k};
+const upIcon=k=>ABIL_ICON[k]||BUFF_ICON[k]||'❔';
+const cl=(v,a,b)=>Math.max(a,Math.min(b,v));
+function slowE(e,t,f){if(!(e.slowTime>0))e.slowFactor=f;else e.slowFactor=Math.min(e.slowFactor||1,f);e.slowTime=Math.max(e.slowTime||0,t)}
+function banner(txt,sub,c){state.banner={txt,sub,c:c||'#ffd55c',t:1.4,T:1.4}}
+function distPoly(px,py,pts){let m=1e9;for(let i=1;i<pts.length;i++){const[x1,y1]=pts[i-1],[x2,y2]=pts[i],dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));m=Math.min(m,Math.hypot(px-(x1+t*dx),py-(y1+t*dy)))}return m}
+function wsAim(){ // 스킬 조준점: 수동=마우스, 자동=가장 가까운 적
+ const s=state;
+ if(!autoFire&&mouse.in)return{x:mouse.x,y:mouse.y,a:Math.atan2(mouse.y-s.py,mouse.x-s.px)};
+ const t=nearestEnemy();
+ return t?{x:t.x,y:t.y,a:Math.atan2(t.y-s.py,t.x-s.px)}:{x:s.px+Math.cos(s.aim)*200,y:s.py+Math.sin(s.aim)*200,a:s.aim};
+}
+
+// ---------- 토네이도 (칼 진화 재료 · 특수 능력) ----------
+const torStats=l=>{const T=CONFIG.tornado;return{cd:Math.max(T.minCooldown,T.cooldown-(l-1)*T.cooldownStep),n:T.counts[Math.min(l,T.counts.length)-1],r:T.radius+(l-1)*T.radiusStep,dps:T.dps+(l-1)*T.dpsStep}};
+function tornadoUpdate(dt){
+ const s=state,l=lv('tornado'),T=CONFIG.tornado;
+ if(!s.tornados)s.tornados=[];
+ s.tornados.forEach(t=>{
+  t.t-=dt;t.a+=dt*8;t.tk-=dt;
+  const tg=nearestEnemy(t.x,t.y,520);
+  if(tg){const d=Math.hypot(tg.x-t.x,tg.y-t.y)||1;t.vx+=(tg.x-t.x)/d*220*dt;t.vy+=(tg.y-t.y)/d*220*dt}
+  const sp=Math.hypot(t.vx,t.vy)||1;if(sp>T.speed){t.vx*=T.speed/sp;t.vy*=T.speed/sp}
+  t.x+=t.vx*dt;t.y+=t.vy*dt;
+  if(t.x<30||t.x>W-30)t.vx*=-1;if(t.y<70||t.y>H-30)t.vy*=-1;
+  const tick=t.tk<=0;if(tick)t.tk=T.tick;
+  for(const e of s.enemies){
+   if(e.hp<=0)continue;
+   const dx=t.x-e.x,dy=t.y-e.y,d=Math.hypot(dx,dy),R=t.r*1.7+e.r;
+   if(dt>0&&d<R&&e.kind!=='boss'){const k=Math.min(.9,dt*T.pull*(1.1-d/R));e.x+=dx*k;e.y+=dy*k}
+   if(tick&&dt>0&&d<t.r+e.r){hurtEnemy(e,t.dps*T.tick*spellM());slowE(e,.4,.55)}
+  }
+ });
+ s.tornados=s.tornados.filter(t=>t.t>0);
+ if(!l||dt<=0)return;
+ s.torCd-=dt;
+ if(s.torCd<=0&&s.enemies.length){
+  const st=torStats(l);s.torCd=st.cd;
+  for(let i=0;i<st.n;i++){const a=Math.random()*Math.PI*2;s.tornados.push({x:s.px+Math.cos(a)*40,y:s.py+Math.sin(a)*40,vx:Math.cos(a)*T.speed,vy:Math.sin(a)*T.speed,r:st.r,dps:st.dps,t:T.life,tk:0,a:Math.random()*6})}
+  sfx('tornado');
+ }
+}
+function drawTornado(t){
+ const T=performance.now()/1000;ctx.save();
+ ctx.globalAlpha=.2;ctx.fillStyle='#bfefff';ctx.beginPath();ctx.ellipse(t.x,t.y+t.r*.35,t.r*1.1,t.r*.35,0,0,Math.PI*2);ctx.fill();
+ const fade=Math.min(1,t.t/.5);
+ for(let i=0;i<9;i++){
+  const k=i/8,y=t.y+t.r*.3-k*t.r*1.9,w=t.r*(.35+k*.85),off=Math.sin(T*6+i*.9+t.a)*t.r*.12;
+  ctx.globalAlpha=(.6-.3*k)*fade;ctx.strokeStyle=i%2?'#e8fbff':'#8ee3ff';ctx.lineWidth=5-k*2;
+  ctx.beginPath();ctx.ellipse(t.x+off,y,w,w*.3,0,0,Math.PI*2);ctx.stroke();
+ }
+ ctx.fillStyle='#ffffff';
+ for(let i=0;i<7;i++){const a=t.a*1.3+i*.9,k=(i%4)/3,rr=t.r*(.4+k*.8);ctx.globalAlpha=.8*fade;ctx.fillRect(t.x+Math.cos(a)*rr-2,t.y-k*t.r*1.4+Math.sin(a)*rr*.3-2,4,4)}
+ ctx.restore();
+}
+
+// ---------- 무기 스킬: 시작/갱신 ----------
+function nadeBlast(n){
+ const s=state,C=CONFIG.ws.pistol;
+ s.enemies.forEach(e=>{if(e.hp<=0||Math.hypot(e.x-n.tx,e.y-n.ty)>=C.r+e.r)return;atkHit(e,C.dmg,0,true);slowE(e,C.stun,.04);burst(e.x,e.y,'#fff6b0',4)});
+ for(let i=0;i<C.shards;i++){const a=i/C.shards*Math.PI*2;s.bullets.push({x:n.tx,y:n.ty,vx:Math.cos(a)*620,vy:Math.sin(a)*620,crit:false,dmg:s.damage*s.bulletDamage*shieldAtk()*3,life:.45,pierce:4,grow:false,sz:1,hitSet:new Set()})}
+ s.fx.push({blast:true,x:n.tx,y:n.ty,r:C.r,c:'#fff27a',life:.25});s.fx.push({ring:true,x:n.tx,y:n.ty,r:20,life:.35});
+ burst(n.tx,n.ty,'#ffffff',22);burst(n.tx,n.ty,'#ffd27a',14);s.shake=Math.max(s.shake,.4);s.flash=.35;sfx('boom');
+}
+function slamLand(){
+ const s=state,C=CONFIG.ws.boomerang;
+ s.enemies.forEach(e=>{if(e.hp<=0)return;const dx=e.x-s.px,dy=e.y-s.py,d=Math.hypot(dx,dy);if(d<C.r+e.r){atkHit(e,C.dmg,0,true);slowE(e,1,.2);if(e.kind!=='boss'&&e.hp>0){e.x+=dx/(d||1)*60;e.y+=dy/(d||1)*60}}});
+ s.fx.push({blast:true,x:s.px,y:s.py,r:C.r,c:'#9fd0ff',life:.25});s.fx.push({ring:true,x:s.px,y:s.py,r:30,life:.4});
+ const done=new Set();
+ for(let i=0;i<C.bolts;i++){
+  const a=i/C.bolts*Math.PI*2+Math.random()*.25,nx=-Math.sin(a),ny=Math.cos(a),pts=[[s.px,s.py]];let len=0;
+  while(len<C.boltLen){len+=26+Math.random()*16;const off=(Math.random()-.5)*34;pts.push([s.px+Math.cos(a)*len+nx*off,s.py+Math.sin(a)*len+ny*off])}
+  s.tbolts.push({pts,life:.55,T:.55,w:C.boltW});
+  const bp=pts[Math.min(2+(Math.random()*2|0),pts.length-1)],ba=a+(Math.random()<.5?-1:1)*(.5+Math.random()*.4),bpts=[bp];let bx=bp[0],by=bp[1];
+  for(let j=0;j<3;j++){bx+=Math.cos(ba)*30+(Math.random()-.5)*14;by+=Math.sin(ba)*30+(Math.random()-.5)*14;bpts.push([bx,by])}
+  s.tbolts.push({pts:bpts,life:.45,T:.45,w:C.boltW*.55});
+  for(const e of s.enemies){if(e.hp<=0||done.has(e))continue;if(distPoly(e.x,e.y,pts)<e.r+C.boltW*.7){done.add(e);atkHit(e,C.boltDmg,0,true);slowE(e,.8,.3);burst(e.x,e.y,'#cfe6ff',5)}}
+ }
+ s.shake=Math.max(s.shake,.5);s.flash=.2;sfx('boom');sfx('chain');
+}
+function galeBurst(){
+ const s=state,C=CONFIG.ws.sword;
+ s.enemies.forEach(e=>{if(e.hp<=0)return;const dx=e.x-s.px,dy=e.y-s.py,d=Math.hypot(dx,dy);if(d<C.burstR+e.r){atkHit(e,C.burstDmg,0,true);if(e.kind!=='boss'&&e.hp>0){e.x+=dx/(d||1)*90;e.y+=dy/(d||1)*90}slowE(e,.8,.4)}});
+ for(let i=0;i<24;i++){const a=i/24*Math.PI*2;s.particles.push({x:s.px,y:s.py,vx:Math.cos(a+1.2)*190,vy:Math.sin(a+1.2)*190,life:.6,c:i%2?'#d8fff0':'#8ff0c8',size:4+Math.random()*3})}
+ s.fx.push({ring:true,x:s.px,y:s.py,r:30,life:.4});s.fx.push({blast:true,x:s.px,y:s.py,r:C.burstR,c:'#8ff0c8',life:.25});s.shake=Math.max(s.shake,.2);sfx('boom');
+}
+function digPop(){
+ const s=state,C=CONFIG.ws.drill;
+ s.dig=null;s.invuln=Math.max(s.invuln,.6);
+ s.enemies.forEach(e=>{if(e.hp<=0)return;const d=Math.hypot(e.x-s.px,e.y-s.py);if(d<C.popR+e.r){atkHit(e,C.popDmg,0,true);slowE(e,C.root,.02);burst(e.x,e.y,'#a87a4a',6)}});
+ for(let i=0;i<34;i++){const a=Math.random()*Math.PI*2,v=80+Math.random()*220;s.particles.push({x:s.px,y:s.py,vx:Math.cos(a)*v,vy:Math.sin(a)*v-60,life:.7+Math.random()*.4,c:i%3?'#8a6a45':'#c9a070',size:4+Math.random()*5})}
+ s.fx.push({blast:true,x:s.px,y:s.py,r:C.popR,c:'#c9a070',life:.25});s.fx.push({ring:true,x:s.px,y:s.py,r:24,life:.4});s.shake=Math.max(s.shake,.5);sfx('boom');banner('튀어오른다!','ERUPTION','#ffcf8a');
+}
+function fireGiant(){
+ const s=state,a=s.aim;
+ s.bowSk=null;s.bowCharge=0;s.bowCd=.5;s.garrow={x:s.px,y:s.py,dx:Math.cos(a),dy:Math.sin(a),carried:[],hit:new Set(),tk:0,t:0};
+ s.shake=Math.max(s.shake,.6);s.flash=.25;sfx('boom');sfx('w_bow');burst(s.px,s.py,'#ffe08a',20);
+}
+function bloodTick(b){
+ const s=state,C=CONFIG.ws.claw;let heal=0;
+ s.enemies.forEach(e=>{
+  if(e.hp<=0||Math.hypot(e.x-s.px,e.y-s.py)>=C.r+e.r)return;
+  const d=atkHit(e,C.dmg,0,true);heal+=d*C.heal;
+  const a=Math.atan2(s.py-e.y,s.px-e.x);s.particles.push({x:e.x,y:e.y,vx:Math.cos(a)*220,vy:Math.sin(a)*220,life:.4,c:'#ff3a5a',size:5});
+ });
+ const room=s.maxhp*C.healCap-b.heal,h=Math.max(0,Math.min(heal,room));
+ if(h>0){b.heal+=h;s.hp=Math.min(s.maxhp,s.hp+h);burst(s.px,s.py,'#ff7a9a',3)}
+ s.fx.push({ring:true,x:s.px,y:s.py,r:30,life:.2});sfx('crit');
+}
+function timeResume(){const s=state;sfx('timeresume');s.fx.push({ring:true,x:s.px,y:s.py,r:20,life:.5});s.tsFlash=.4;s.shake=Math.max(s.shake,.3);say('시간은 다시 흐른다…')}
+
+const waterTarget=()=>{const s=state,z=s.waterZ;if(!z)return null;let best=null,bd=1e18;for(const e of s.enemies){if(e.hp<=0)continue;if(Math.hypot(e.x-z.x,e.y-z.y)>=z.r+e.r)continue;const d=(e.x-s.px)**2+(e.y-s.py)**2;if(d<bd){bd=d;best=e}}return best};
+const inWater=()=>{const s=state,z=s.waterZ;return !!z&&Math.hypot(s.px-z.x,s.py-z.y)<z.r};
+
+const WSKILL={
+ pistol:{n:'섬광 수류탄',en:'FLASHBANG GRENADE',ic:'💥',cdk:'pistol',d:'조준 지점에 수류탄 투척 → 큰 폭발 + 섬광 기절(2.6초) + 파편탄 16발',
+  use(s){const C=CONFIG.ws.pistol,p=wsAim();let tx=p.x,ty=p.y;
+   if(autoFire){const t=meteorTargets(1,C.r)[0];if(t){tx=t.x;ty=t.y}}
+   const d=Math.hypot(tx-s.px,ty-s.py)||1,k=Math.min(1,C.range/d);tx=cl(s.px+(tx-s.px)*k,20,W-20);ty=cl(s.py+(ty-s.py)*k,62,H-20);
+   s.nades.push({x0:s.px,y0:s.py,tx,ty,x:s.px,y:s.py,h:0,t:0,T:.7});sfx('w_missile');banner('섬광 수류탄!','FLASHBANG GRENADE','#fff27a')}},
+ missile:{n:'융단 폭격',en:'CARPET BOMBING',ic:'✈️',cdk:'missile',d:'맵 오른쪽에서 왼쪽으로 세로 줄 폭탄이 쓸고 지나가며 전역 폭격',
+  use(s){s.carpet={x:W+40,acc:0};sfx('w_missile');banner('융단 폭격!','CARPET BOMBING','#ff9a3d')}},
+ boomerang:{n:'낙뢰 강타',en:'THUNDER SLAM',ic:'🪓',cdk:'boomerang',d:'제자리 점프 후 도끼를 내려찍어 충격파 + 굵은 갈래 번개 10줄',
+  use(s){const C=CONFIG.ws.boomerang;s.slam={t:0,T:C.jump};s.invuln=Math.max(s.invuln,C.jump+.5);sfx('dash');burst(s.px,s.py,'#cfe6ff',10);banner('낙뢰 강타!','THUNDER SLAM','#9fd0ff')}},
+ sniper:{n:'더 월드',en:'THE WORLD',ic:'⏱️',cdk:'sniper',d:'4.5초간 시간 정지: 플레이어만 움직일 수 있고, 발사한 탄환은 시간이 흐르면 한꺼번에 날아감',
+  use(s){const C=CONFIG.ws.sniper;s.tstop=s.tsMax=C.time;s.tsFlash=.7;sfx('theworld');banner('더 월드!','THE WORLD — 시간 정지','#ffe45c')}},
+ sword:{n:'질풍 일섬',en:'GALE SLASH',ic:'🍃',cdk:'sword',d:'조준 방향으로 바람처럼 돌진(무적)하며 베고, 도착 지점에서 돌풍 폭발',
+  use(s){const C=CONFIG.ws.sword,p=wsAim();s.gale={a:p.a,t:0,T:C.dur,hit:new Set()};s.invuln=Math.max(s.invuln,C.dur+.35);sfx('dash');banner('질풍 일섬!','GALE SLASH','#8ff0c8')}},
+ machinegun:{n:'경기관총 전개',en:'HEAVY MACHINE GUN',ic:'🔫',cdk:'machinegun',d:'5초간 경기관총으로 변신: 강한 보호막 + 이동 불가 + 공격 속도 3배',
+  use(s){const C=CONFIG.ws.machinegun;s.hmg=C.time;s.tshield=s.tshMax=C.shield;s.invuln=Math.max(s.invuln,.3);sfx('levelup');banner('경기관총 전개!','HEAVY MACHINE GUN','#ffb347')}},
+ drill:{n:'지중 잠행',en:'UNDERGROUND',ic:'⛏️',cdk:'drill',d:'땅속으로 잠수(무적·공격 불가)하며 흙더미 흔적으로 적에게 피해 → 튀어나오며 강한 피해와 구속',
+  use(s){const C=CONFIG.ws.drill;s.dig={t:C.dig,mt:0};s.invuln=Math.max(s.invuln,C.dig+.6);for(let i=0;i<16;i++){const a=Math.random()*Math.PI*2;s.particles.push({x:s.px,y:s.py,vx:Math.cos(a)*120,vy:Math.sin(a)*120-40,life:.5,c:'#a87a4a',size:5})}sfx('boom');banner('지중 잠행!','UNDERGROUND','#c9a070')}},
+ lance:{n:'해일 영역',en:'TIDAL DOMAIN',ic:'🌊',cdk:'lance',d:'큰 물의 영역 생성: 영역 내 적 둔화, 연속 공격 필요 관통 수 증가 없음, 창이 영역 내 적을 우선 추적',
+  use(s){const C=CONFIG.ws.lance;s.waterZ={x:s.px,y:s.py,r:C.r,t:C.time,l0:C.time};sfx('wave');s.fx.push({ring:true,x:s.px,y:s.py,r:30,life:.5});banner('해일 영역!','TIDAL DOMAIN','#6fd0ff')}},
+ bow:{n:'파괴의 화살',en:'DOOM ARROW',ic:'🏹',cdk:'bow',d:'2초간 제자리 충전 후 초대형 화살 발사: 경로의 모든 적을 맵 끝까지 끌고 가며 강타',
+  use(s){const C=CONFIG.ws.bow;s.bowSk={t:0,T:C.charge};s.bowCharge=0;sfx('levelup');banner('파괴의 화살!','DOOM ARROW — CHARGING','#ffd55c')}},
+ claw:{n:'블러드 스톰',en:'BLOOD STORM',ic:'🩸',cdk:'claw',d:'주변에 핏빛 칼날 폭풍: 1.8초간 12회 타격하며 준 피해의 일부를 회복',
+  use(s){const C=CONFIG.ws.claw;s.bstorm={t:0,T:C.time,n:0,heal:0};s.invuln=Math.max(s.invuln,.3);sfx('levelup');banner('블러드 스톰!','BLOOD STORM','#ff5a7a')}}
+};
+function wsCd(w){return CONFIG.ws[w].cd}
+function useWskill(){
+ const s=state;if(!s||s.over||s.choose||s.paused||s.wsel||s.ending||!s.weapon)return;
+ const w=s.weapon,K=WSKILL[w];if(!K)return;
+ if(!wskillUnlocked(w)){say('🔒 무기 스킬 잠김: 무기 Lv.3 + '+upName(EVO[w][0])+' 또는 '+upName(EVO[w][1])+' 필요');return}
+ if(s.ws.cd>0){return}
+ if(s.finalStage===1)return;
+ K.use(s);s.ws.cd=wsCd(w);
+}
+
+function wskillUpdate(dt){
+ const s=state,w=s.weapon,C=CONFIG.ws;
+ s.ws.cd=Math.max(0,s.ws.cd-dt);
+ if(s.banner){s.banner.t-=dt;if(s.banner.t<=0)s.banner=null}
+ s.flash=Math.max(0,s.flash-dt);s.tsFlash=Math.max(0,s.tsFlash-dt);
+ // 해금 알림
+ if(w&&!s.ws.unl&&wskillUnlocked(w)){s.ws.unl=true;say('무기 스킬 해금! [SPACE] '+WSKILL[w].n);sfx('levelup')}
+ if(w&&!s.ws.evo&&evoReady(w)){s.ws.evo=true}
+ // 1) 수류탄
+ s.nades.forEach(n=>{n.t+=dt;const p=Math.min(1,n.t/n.T);n.x=n.x0+(n.tx-n.x0)*p;n.y=n.y0+(n.ty-n.y0)*p;n.h=Math.sin(p*Math.PI)*90;if(p>=1&&!n.done){n.done=true;nadeBlast(n)}});
+ s.nades=s.nades.filter(n=>!n.done);
+ // 2) 융단 폭격
+ const c=s.carpet;
+ if(c){
+  const P=C.missile;c.x-=P.speed*dt;c.acc+=dt;
+  while(c.acc>=P.cols){c.acc-=P.cols;for(let y=58+Math.random()*P.gap*.5;y<H-8;y+=P.gap)s.bombs.push({x:c.x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*12,t:.42,T:.42,r:P.r,done:false,fl:0});if(Math.random()<.5)sfx('boom')}
+  if(c.x<-50)s.carpet=null;
+ }
+ s.bombs.forEach(b=>{if(!b.done){b.t-=dt;if(b.t<=0){b.done=true;b.fl=.3;aoe(b.x,b.y,b.r,C.missile.dmg,0,true);s.fx.push({blast:true,x:b.x,y:b.y,r:b.r,c:'#ff9a3d',life:.2});burst(b.x,b.y,'#ffb347',3);s.shake=Math.max(s.shake,.05)}}else b.fl-=dt});
+ s.bombs=s.bombs.filter(b=>!b.done||b.fl>0);
+ // 3) 낙뢰 강타
+ if(s.slam){s.slam.t+=dt;s.invuln=Math.max(s.invuln,.2);if(s.slam.t>=s.slam.T){s.slam=null;slamLand()}}
+ s.tbolts.forEach(b=>b.life-=dt);s.tbolts=s.tbolts.filter(b=>b.life>0);
+ // 5) 질풍 일섬
+ if(s.gale){
+  const g=s.gale,G=C.sword,mv=G.dist/G.dur*dt;g.t+=dt;
+  s.px=cl(s.px+Math.cos(g.a)*mv,16,W-16);s.py=cl(s.py+Math.sin(g.a)*mv,55,H-16);s.invuln=Math.max(s.invuln,.2);
+  s.gtrail.push({x:s.px,y:s.py,a:g.a,life:.35});
+  s.enemies.forEach(e=>{if(e.hp<=0||g.hit.has(e)||Math.hypot(e.x-s.px,e.y-s.py)>=e.r+44)return;g.hit.add(e);atkHit(e,G.dmg,0,true);burst(e.x,e.y,'#d8fff0',6);s.fx.push({ring:true,x:e.x,y:e.y,r:e.r*.6,life:.2});if(e.kind!=='boss'&&e.hp>0){e.x+=Math.cos(g.a+1.57)*20;e.y+=Math.sin(g.a+1.57)*20}});
+  if(g.t>=g.T){s.gale=null;galeBurst()}
+ }
+ s.gtrail.forEach(t=>t.life-=dt);s.gtrail=s.gtrail.filter(t=>t.life>0);
+ // 6) 경기관총
+ if(s.hmg>0){s.hmg-=dt;if(s.hmg<=0){s.hmg=0;s.tshield=0}}
+ // 7) 지중 잠행
+ if(s.dig){
+  const g=s.dig,D=C.drill;g.t-=dt;g.mt-=dt;s.invuln=Math.max(s.invuln,.2);
+  if(g.mt<=0){g.mt=.07;s.mounds.push({x:s.px,y:s.py,t:D.moundT,T:D.moundT,sz:6+Math.random()*4});if(s.mounds.length>90)s.mounds.shift()}
+  if(Math.random()<dt*40)s.particles.push({x:s.px+(Math.random()-.5)*14,y:s.py+6,vx:(Math.random()-.5)*60,vy:-50-Math.random()*50,life:.4,c:'#a87a4a',size:4});
+  if(g.t<=0)digPop();
+ }
+ if(s.mounds.length){
+  const D=C.drill;
+  for(const e of s.enemies){
+   if(e.hp<=0)continue;e.mdT=(e.mdT||0)-dt;if(e.mdT>0)continue;
+   for(const m of s.mounds){if(Math.hypot(e.x-m.x,e.y-m.y)<e.r+16){atkHit(e,D.moundDmg,0,true);e.mdT=.3;slowE(e,.5,.5);burst(e.x,e.y,'#a87a4a',3);break}}
+  }
+  s.mounds.forEach(m=>m.t-=dt);s.mounds=s.mounds.filter(m=>m.t>0);
+ }
+ // 8) 해일 영역
+ if(s.waterZ){
+  const z=s.waterZ;z.t-=dt;
+  for(const e of s.enemies){if(e.hp>0&&Math.hypot(e.x-z.x,e.y-z.y)<z.r+e.r)slowE(e,.3,C.lance.slow)}
+  if(z.t<=0)s.waterZ=null;
+ }
+ // 9) 파괴의 화살 충전
+ if(s.bowSk){
+  const b=s.bowSk;b.t+=dt;s.bowCharge=Math.min(1,b.t/b.T);s.invuln=Math.max(s.invuln,.1);
+  if(b.t>=b.T)fireGiant();
+ }
+ // 10) 블러드 스톰
+ if(s.bstorm){
+  const b=s.bstorm,K=C.claw;b.t+=dt;s.invuln=Math.max(s.invuln,.15);
+  const need=Math.min(K.ticks,Math.floor(b.t/(b.T/K.ticks)));
+  while(b.n<need){b.n++;bloodTick(b)}
+  if(b.t>=b.T)s.bstorm=null;
+ }
+}
+// 파괴의 화살: 적을 끌고 맵 끝까지 (적 이동 처리 이후에 호출해 위치를 덮어씀)
+function garrowUpdate(dt){
+ const s=state,g=s.garrow;if(!g)return;
+ const C=CONFIG.ws.bow,nx=-g.dy,ny=g.dx;
+ g.x+=g.dx*C.speed*dt;g.y+=g.dy*C.speed*dt;g.t+=dt;g.tk-=dt;
+ for(const e of s.enemies){
+  if(e.hp<=0||g.hit.has(e))continue;
+  if(Math.hypot(e.x-g.x,e.y-g.y)<C.w+e.r){
+   g.hit.add(e);atkHit(e,C.dmg,0,true);burst(e.x,e.y,'#ffe08a',6);
+   if(e.kind!=='boss')g.carried.push({e,off:(e.x-g.x)*nx+(e.y-g.y)*ny,lag:-8-Math.random()*26});
+  }
+ }
+ const tick=g.tk<=0;if(tick)g.tk=.12;
+ g.carried=g.carried.filter(c=>c.e.hp>0);
+ for(const c of g.carried){
+  c.e.x=cl(g.x+nx*c.off+g.dx*c.lag,4,W-4);c.e.y=cl(g.y+ny*c.off+g.dy*c.lag,50,H-4);c.e.slowTime=.2;c.e.slowFactor=0;
+  if(tick&&c.e.hp>0){atkHit(c.e,C.tick,0,true);burst(c.e.x,c.e.y,'#ffe9a0',2)}
+ }
+ if(Math.random()<dt*60)s.particles.push({x:g.x-g.dx*20+(Math.random()-.5)*30,y:g.y-g.dy*20+(Math.random()-.5)*30,vx:0,vy:0,life:.4,c:'#ffe9a0',size:5});
+ s.shake=Math.max(s.shake,.08);
+ if(g.x<-80||g.x>W+80||g.y<-80||g.y>H+80){
+  g.carried.forEach(c=>{if(c.e.hp>0){slowE(c.e,1.2,.1)}});
+  s.garrow=null;
+ }
+}
+
+// ---------- 그리기 ----------
+function drawWskillGround(){
+ const s=state,T=performance.now()/1000;
+ if(s.waterZ){const z=s.waterZ;drawPuddleZone(ctx,{x:z.x,y:z.y,r:z.r,life:z.t,l0:z.l0});ctx.save();ctx.globalAlpha=.55;ctx.strokeStyle='#bfeaff';ctx.lineWidth=3;ctx.setLineDash([14,10]);ctx.lineDashOffset=-T*40;ctx.beginPath();ctx.arc(z.x,z.y,z.r+6,0,Math.PI*2);ctx.stroke();ctx.restore()}
+ s.mounds.forEach(m=>{const f=Math.min(1,m.t/.6);ctx.save();ctx.globalAlpha=f;ctx.fillStyle='#4a3626';ctx.beginPath();ctx.ellipse(m.x,m.y+3,m.sz+4,(m.sz+4)*.55,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#8a6a45';ctx.beginPath();ctx.ellipse(m.x,m.y,m.sz,m.sz*.6,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#b08c5e';ctx.beginPath();ctx.ellipse(m.x-1,m.y-2,m.sz*.5,m.sz*.28,0,0,Math.PI*2);ctx.fill();ctx.restore()});
+ s.tornados.forEach(drawTornado);
+ s.gtrail.forEach(t=>{ctx.save();ctx.globalAlpha=t.life/.35*.6;ctx.translate(t.x,t.y);ctx.rotate(t.a);ctx.fillStyle='#8ff0c8';ctx.fillRect(-26,-3,40,6);ctx.fillStyle='#e8fff6';ctx.fillRect(-14,-1.5,26,3);ctx.restore()});
+}
+function drawWskillAir(){
+ const s=state,T=performance.now()/1000;
+ // 수류탄
+ s.nades.forEach(n=>{
+  ctx.save();const p=Math.min(1,n.t/n.T);
+  ctx.globalAlpha=.55;ctx.strokeStyle='#fff27a';ctx.lineWidth=2;ctx.setLineDash([6,6]);ctx.lineDashOffset=-T*40;ctx.beginPath();ctx.arc(n.tx,n.ty,CONFIG.ws.pistol.r*(.35+.65*p),0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);
+  ctx.globalAlpha=.3;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(n.x,n.y,8,4,0,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;ctx.fillStyle='#2a3a2a';ctx.beginPath();ctx.arc(n.x,n.y-n.h,8,0,Math.PI*2);ctx.fill();ctx.fillStyle='#5a7a4a';ctx.beginPath();ctx.arc(n.x-2,n.y-n.h-2,4,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=Math.floor(T*20)%2?'#ffd55c':'#ff6b3d';ctx.fillRect(n.x-1,n.y-n.h-13,3,5);ctx.restore();
+ });
+ // 융단 폭격
+ if(s.carpet){const c=s.carpet;ctx.save();const g=ctx.createLinearGradient(c.x-40,0,c.x+40,0);g.addColorStop(0,'rgba(255,90,40,0)');g.addColorStop(.5,'rgba(255,120,50,.35)');g.addColorStop(1,'rgba(255,90,40,0)');ctx.fillStyle=g;ctx.fillRect(c.x-40,48,80,H-48);
+  ctx.globalAlpha=.9;ctx.fillStyle='#cfd6e4';for(let y=70;y<H;y+=120){ctx.beginPath();ctx.moveTo(c.x+22,y);ctx.lineTo(c.x-18,y-14);ctx.lineTo(c.x-8,y);ctx.lineTo(c.x-18,y+14);ctx.closePath();ctx.fill()}ctx.restore()}
+ s.bombs.forEach(b=>{ctx.save();
+  if(!b.done){const k=b.t/b.T;ctx.globalAlpha=.5;ctx.strokeStyle='#ff5a3a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r*.4*(1.2-k*.4),0,Math.PI*2);ctx.stroke();
+   ctx.globalAlpha=1;ctx.fillStyle='#2a2f3a';ctx.beginPath();ctx.ellipse(b.x,b.y-k*220,4,7,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff7a4d';ctx.fillRect(b.x-1,b.y-k*220-11,2,4)}
+  else{const f=b.fl/.3;ctx.globalAlpha=f*.8;ctx.fillStyle='#ff9a3d';ctx.beginPath();ctx.arc(b.x,b.y,b.r*(.5+.5*(1-f)),0,Math.PI*2);ctx.fill();ctx.fillStyle='#fff3b0';ctx.beginPath();ctx.arc(b.x,b.y,b.r*.3*f,0,Math.PI*2);ctx.fill()}
+  ctx.restore()});
+ // 굵은 번개
+ s.tbolts.forEach(b=>{const f=b.life/b.T;ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+  const path=()=>{ctx.beginPath();b.pts.forEach((q,i)=>i?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]))};
+  ctx.globalAlpha=.3*f;ctx.strokeStyle='#4d8cff';ctx.lineWidth=b.w*1.5;path();ctx.stroke();
+  ctx.globalAlpha=.75*f;ctx.strokeStyle='#a8d0ff';ctx.lineWidth=b.w*.7;path();ctx.stroke();
+  ctx.globalAlpha=f;ctx.strokeStyle='#ffffff';ctx.lineWidth=b.w*.28;path();ctx.stroke();ctx.restore()});
+ // 파괴의 화살: 충전 조준선 / 발사된 화살
+ if(s.bowSk){const b=s.bowSk,k=Math.min(1,b.t/b.T),C=CONFIG.ws.bow;ctx.save();
+  ctx.translate(s.px,s.py);ctx.rotate(s.aim);
+  ctx.globalAlpha=.1+.25*k;ctx.fillStyle='#ffd55c';ctx.fillRect(0,-C.w*k,W+H,C.w*2*k);
+  ctx.globalAlpha=.9;ctx.fillStyle='#ffe08a';ctx.fillRect(10,-2,30+60*k,4);ctx.beginPath();ctx.moveTo(40+60*k,-8*(.5+k));ctx.lineTo(64+80*k,0);ctx.lineTo(40+60*k,8*(.5+k));ctx.closePath();ctx.fill();
+  ctx.restore();
+  ctx.save();ctx.strokeStyle=k>=1?(Math.floor(T*14)%2?'#fff':'#ff6b6b'):'#ffd55c';ctx.lineWidth=5;ctx.beginPath();ctx.arc(s.px,s.py,28,-Math.PI/2,-Math.PI/2+Math.PI*2*k);ctx.stroke();ctx.restore()}
+ if(s.garrow){const g=s.garrow,C=CONFIG.ws.bow,a=Math.atan2(g.dy,g.dx);ctx.save();ctx.translate(g.x,g.y);ctx.rotate(a);
+  const gr=ctx.createLinearGradient(-340,0,0,0);gr.addColorStop(0,'rgba(255,224,138,0)');gr.addColorStop(1,'rgba(255,224,138,.7)');ctx.fillStyle=gr;ctx.fillRect(-340,-C.w*.55,340,C.w*1.1);
+  ctx.fillStyle='#fff6d0';ctx.fillRect(-200,-5,200,10);ctx.fillStyle='#ffd55c';ctx.fillRect(-200,-2,200,4);
+  ctx.fillStyle='#ffffff';ctx.beginPath();ctx.moveTo(0,-C.w*.7);ctx.lineTo(70,0);ctx.lineTo(0,C.w*.7);ctx.lineTo(18,0);ctx.closePath();ctx.fill();
+  ctx.globalAlpha=.4;ctx.fillStyle='#ffd55c';ctx.beginPath();ctx.arc(0,0,C.w*1.3,0,Math.PI*2);ctx.fill();ctx.restore()}
+}
+// 플레이어 위에 그려지는 스킬 효과 (translate 적용 상태에서 호출)
+function drawWskillPlayerFx(){
+ const s=state,T=performance.now()/1000;
+ if(s.hmg>0){ // 경기관총 변신: 굵은 총열 + 삼각대 + 보호막
+  ctx.save();ctx.translate(s.px,s.py);
+  ctx.strokeStyle='#4a4f5c';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(0,8);ctx.lineTo(-16,24);ctx.moveTo(0,8);ctx.lineTo(16,24);ctx.stroke();
+  ctx.rotate(s.aim);ctx.fillStyle='#2b303c';ctx.fillRect(4,-7,40,14);ctx.fillStyle='#5a6070';ctx.fillRect(10,-5,30,5);ctx.fillStyle='#1b1f2a';ctx.fillRect(40,-4,14,8);
+  ctx.fillStyle='#d9b04a';for(let i=0;i<4;i++)ctx.fillRect(-4-i*5,-9+(i%2)*3,4,6);
+  if(s.muzzle>0||Math.random()<.5){ctx.fillStyle='#ffd27a';ctx.fillRect(54,-3,10+Math.random()*8,6)}
+  ctx.restore();
+  if(s.tshield>0){ctx.save();ctx.globalAlpha=.3+.4*s.tshield/s.tshMax;ctx.strokeStyle='#ffb347';ctx.lineWidth=4;ctx.beginPath();ctx.arc(s.px,s.py,28,0,Math.PI*2);ctx.stroke();ctx.restore()}
+  text('HMG '+s.hmg.toFixed(1)+'s',s.px,s.py-40,'#ffb347',12,'center');
+ }
+ if(s.bstorm){ // 블러드 스톰: 회전하는 핏빛 칼날
+  const b=s.bstorm,K=CONFIG.ws.claw,k=Math.min(1,b.t/.25),R=K.r*(.55+.45*k);
+  ctx.save();ctx.translate(s.px,s.py);
+  const g=ctx.createRadialGradient(0,0,10,0,0,R);g.addColorStop(0,'rgba(255,40,80,.35)');g.addColorStop(1,'rgba(255,40,80,0)');ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);ctx.fill();
+  ctx.lineCap='round';
+  for(let r=0;r<3;r++)for(let i=0;i<4;i++){const a=T*(9-r*2)+i*Math.PI/2+r;ctx.globalAlpha=.85-r*.2;ctx.strokeStyle=r%2?'#ff7a9a':'#ff2a50';ctx.lineWidth=7-r*2;ctx.beginPath();ctx.arc(0,0,R*(.45+r*.25),a,a+.8);ctx.stroke()}
+  ctx.restore();
+ }
+}
+function drawDigHump(){
+ const s=state,T=performance.now()/1000;
+ ctx.save();ctx.translate(s.px,s.py+4);
+ ctx.fillStyle='#4a3626';ctx.beginPath();ctx.ellipse(0,4,22,10,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#8a6a45';ctx.beginPath();ctx.ellipse(0,0,16,8,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle='#b08c5e';ctx.beginPath();ctx.ellipse(-3,-2,8,4,0,0,Math.PI*2);ctx.fill();
+ ctx.strokeStyle='#d8b98a';ctx.lineWidth=2;for(let i=0;i<2;i++){const k=(T*1.5+i/2)%1;ctx.globalAlpha=1-k;ctx.beginPath();ctx.ellipse(0,2,16+k*18,8+k*8,0,0,Math.PI*2);ctx.stroke()}
+ ctx.restore();
+ if(s.dig)text(s.dig.t.toFixed(1)+'s',s.px,s.py-22,'#ffcf8a',12,'center');
+}
+// 화면 전체 연출: 시간 정지 / 번쩍임 / 배너
+function drawWskillOverlay(){
+ const s=state,T=performance.now()/1000;
+ if(s.tstop>0){
+  ctx.save();ctx.globalCompositeOperation='saturation';ctx.globalAlpha=.92;ctx.fillStyle='#808080';ctx.fillRect(0,48,W,H-48);ctx.restore();
+  ctx.save();ctx.globalAlpha=.1;ctx.fillStyle='#ffe45c';ctx.fillRect(0,48,W,H-48);ctx.restore();
+  // 플레이어만 색을 유지
+  rect(s.px-10,s.py-10,20,20,'#5ae1eb');rect(s.px-6,s.py-6,12,12,'#b9ffff');rect(s.px-6,s.py-3,3,3,'#142d41');rect(s.px+3,s.py-3,3,3,'#142d41');rect(s.px-5,s.py+5,10,3,'#2d91af');
+  // 시계 링
+  const k=s.tstop/(s.tsMax||1);ctx.save();ctx.translate(s.px,s.py);ctx.strokeStyle='#ffe45c';ctx.lineWidth=3;ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(0,0,40,-Math.PI/2,-Math.PI/2+Math.PI*2*k);ctx.stroke();
+  ctx.globalAlpha=.6;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(T*6)*34,Math.sin(T*6)*34);ctx.stroke();ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(T*.5)*22,Math.sin(T*.5)*22);ctx.stroke();ctx.restore();
+  text('⏱ '+s.tstop.toFixed(1)+'s',s.px,s.py-52,'#ffe45c',14,'center');
+ }
+ if(s.tsFlash>0){ctx.save();ctx.globalAlpha=Math.min(.8,s.tsFlash);ctx.fillStyle=s.tstop>0?'#fffbe0':'#ffffff';ctx.fillRect(0,48,W,H-48);ctx.restore()}
+ if(s.flash>0){ctx.save();ctx.globalAlpha=Math.min(.85,s.flash*2.2);ctx.fillStyle='#ffffff';ctx.fillRect(0,48,W,H-48);ctx.restore()}
+ if(s.banner){
+  const b=s.banner,k=b.t/b.T,a=Math.min(1,k*3),sc=1+Math.max(0,1-(1-k)*6)*.4;
+  ctx.save();ctx.globalAlpha=a;ctx.translate(W/2,H/2-70);ctx.scale(sc,sc);ctx.textAlign='center';
+  ctx.font='bold 58px monospace';ctx.lineWidth=9;ctx.strokeStyle='#000';ctx.strokeText(b.txt,0,0);ctx.fillStyle=b.c;ctx.fillText(b.txt,0,0);
+  if(b.sub){ctx.font='bold 20px monospace';ctx.lineWidth=5;ctx.strokeText(b.sub,0,34);ctx.fillStyle='#fff';ctx.fillText(b.sub,0,34)}
+  ctx.restore();
+ }
+}
+// HUD: 무기 스킬 상자 + 진화 조건 트래커
+function drawWskillHud(){
+ const s=state,w=s.weapon;if(!w||!WSKILL[w])return;
+ const K=WSKILL[w],un=wskillUnlocked(w),rem=s.ws.cd,tot=wsCd(w),bx=W-70,by=H-70;
+ rect(bx,by,56,56,'#0b1020cc');
+ ctx.save();ctx.globalAlpha=un?(rem>0?.45:1):.25;text(K.ic,bx+28,by+36,'#fff',28,'center');ctx.restore();
+ if(!un)text('🔒',bx+44,by+14,'#fff',14,'center');
+ else if(rem>0){rect(bx,by,56,56*Math.min(1,rem/tot),'#000000aa');text(rem.toFixed(rem<10?1:0),bx+28,by+34,'#ffd55c',16,'center')}
+ else rect(bx,by+52,56,4,'#5bdc8c');
+ ctx.strokeStyle=!un?'#2a3550':rem>0?'#35425f':'#5bdc8c';ctx.lineWidth=2;ctx.strokeRect(bx+1,by+1,54,54);
+ text('[SPACE]',bx+28,by+68,un?'#9eacc8':'#566079',10,'center');
+ text(K.n,bx+28,by-6,un?'#eef2ff':'#566079',11,'center');
+ if(!un)text('Lv3 + '+upIcon(EVO[w][0])+'/'+upIcon(EVO[w][1]),bx+28,by-20,'#9eacc8',11,'center');
+ // 진화 조건 트래커
+ const sp=SPECIAL[w];let y=H-78,x=12;
+ if(has(sp)){text('✦ 진화 완료',x,y,'#ffd55c',11);return}
+ const parts=[['✦진화 ',null],['무기Lv'+CONFIG.special.need+' ',wUp(w)>=CONFIG.special.need],[upIcon(EVO[w][0])+upName(EVO[w][0])+' ',has(EVO[w][0])],[upIcon(EVO[w][1])+upName(EVO[w][1]),has(EVO[w][1])]];
+ ctx.font='bold 11px monospace';ctx.textAlign='left';
+ for(const [t,ok] of parts){const col=ok===null?'#ffd55c':ok?'#5bdc8c':'#ef5763';ctx.fillStyle=col;ctx.fillText((ok===true?'✓':ok===false?'✗':'')+t,x,y);x+=ctx.measureText((ok===null?'':'✓')+t).width+4}
+}
+// 사전: 무기 상세에 진화 조건 + 무기 스킬 안내
+function evoInfoHtml(w){
+ const K=WSKILL[w],E=EVO[w];if(!K||!E)return '';
+ return `<div class="lvbox"><div class="lvgrid"><div class="lvs"><span>✦ 진화 조건</span><b>무기 Lv.${CONFIG.special.need} + ${upIcon(E[0])}${upName(E[0])} + ${upIcon(E[1])}${upName(E[1])}</b></div><div class="lvs"><span>${K.ic} 무기 스킬 [SPACE]</span><b>${K.n} · 쿨타임 ${wsCd(w)}초</b></div><div class="lvs"><span>스킬 해금 조건</span><b>무기 Lv.3 + (${upName(E[0])} 또는 ${upName(E[1])})</b></div></div><p class="lvnote">${K.d}</p></div>`;
+}
+
 function update(dt,now){
  const s=state;
  if(s.paused||s.choose||s.over)return;
@@ -2515,10 +2931,12 @@ function update(dt,now){
   if(t>=s.endLen){s.ending=false;showEnding()}
   return;
  }
- s.time+=dt;
+ if(s.tstop>0){s.tstop-=dt;if(s.tstop<=0){s.tstop=0;timeResume()}}
+ const wdt=s.tstop>0?0:dt; // 월드 시간 (더 월드 중에는 0)
+ s.time+=wdt;
  // 7분: 모든 몬스터 소멸 → 경고 → 최종 보스
  if(!s.finalStage&&s.time>=CONFIG.final.time)startFinal();
- if(s.finalStage===1){s.finalT-=dt;if(s.finalT<=0){s.finalStage=2;spawnFinal()}}
+ if(s.finalStage===1){s.finalT-=wdt;if(s.finalT<=0){s.finalStage=2;spawnFinal()}}
  s.recoil=Math.max(0,s.recoil-dt*9);s.muzzle=Math.max(0,s.muzzle-dt);s.throwT=Math.max(0,s.throwT-dt);
  s.invuln=Math.max(0,s.invuln-dt);
  s.dashCd=Math.max(0,s.dashCd-dt);
@@ -2545,8 +2963,8 @@ function update(dt,now){
  if(m){dx/=m;dy/=m}
  s.moving=m>0;if(m)s.moveAng=Math.atan2(dy,dx);s.stillT=m>0?0:s.stillT+dt;
  if(lv('sniper'))s.sniperG=m>0?Math.max(0,s.sniperG-dt*3):Math.min(1,s.sniperG+dt/CONFIG.atk.sniper.stillTime); // 가만히 있으면 충전, 움직이면 빠르게 감소
- const mul=(s.dashTime>0?3.1:1)*(inPuddle()?CONFIG.events.puddleSlow:1)*momSpeed();
- if(!s.lance){ // 돌격창 돌진 중에는 일반 이동 없음
+const mul=(s.dashTime>0?3.1:1)*(s.dig?1.25:1)*(inPuddle()?CONFIG.events.puddleSlow:1)*momSpeed();
+ if(!s.lance&&!(s.hmg>0||s.slam||s.bowSk)){ // 돌격창 돌진·스킬 시전 중에는 일반 이동 없음
   let vx=dx*s.speed*mul,vy=dy*s.speed*mul;
   if(inIce()){const k=Math.min(1,dt*1.6);s.ivx+=(vx-s.ivx)*k;s.ivy+=(vy-s.ivy)*k;vx=s.ivx;vy=s.ivy} // 빙판: 관성으로 미끄러짐
   else{s.ivx=vx;s.ivy=vy}
@@ -2554,72 +2972,75 @@ function update(dt,now){
   s.py=Math.max(55,Math.min(H-16,s.py+vy*dt));
  }
 
- s.spawn+=dt;
+ s.spawn+=wdt;
  // 3분(180초) 이후: 스폰 간격 단축 + 한 번에 여러 마리 + 정예 비중 증가
- const late=Math.max(0,s.time-180),base=Math.max(.24,.95-s.time*.006),gap=Math.max(.16,base-Math.min(.08,late*.0004))*1.15; // 스폰 간격 +15% (스폰 수 감소)
+ const late=Math.max(0,s.time-180),base=Math.max(.24,.95-s.time*.006),gap=Math.max(.15,base-Math.min(.09,late*.0005)); // [강화] 스폰 간격 단축 (이전 +15% 감소분 제거)
  if(s.time>=180&&!s.lateMsg){s.lateMsg=true;say('후반전! 몬스터가 대량으로 몰려옵니다')}
  if(s.spawn>=gap&&!s.finalStage){
   s.spawn=0;spawn();
-  if(s.time>45&&Math.random()<.22)spawn();
+  if(s.time>40&&Math.random()<.3)spawn();
   if(late>0){const ex=Math.min(2,1+(late/150|0));for(let i=0;i<ex;i++)if(Math.random()<.5)spawn()}
  }
 
  updateAim();
  if(s.weapon==='pistol'&&now-s.lastshot>=s.rate*1000){if(shoot())s.lastshot=now}
 
- eventsUpdate(dt);
- meteorUpdate(dt);
- auraUpdate(dt);
- attackUpdate(dt);
+ s.noAtk=!!(s.dig||s.bowSk);s.noFlick=(s.slam||s.gale||s.hmg>0||s.bstorm||s.bowSk)?1:0;
+ eventsUpdate(wdt);
+ meteorUpdate(wdt);
+ auraUpdate(wdt);
+ tornadoUpdate(wdt);
+ attackUpdate(dt,wdt);
+ wskillUpdate(dt);
  if(s.time>=s.nextBoss&&!s.boss&&!s.finalStage&&s.time<CONFIG.final.time-20)spawnBoss();
  const OB=s.orbs?orbStats(s.orbLevel):null;
  const fsb=stillField();
  s.eb.forEach(b=>{
-  b.x+=b.vx*dt*fsb;b.y+=b.vy*dt*fsb;b.life-=dt*fsb;
+  b.x+=b.vx*wdt*fsb;b.y+=b.vy*wdt*fsb;b.life-=wdt*fsb;
   if(b.split&&b.life<=0){ // 큰 구체: 시간이 다하면 탄막으로 폭발
     for(let i=0;i<b.split;i++){const a=Math.PI*2*i/b.split+Math.random()*.2;s.eb.push({x:b.x,y:b.y,vx:Math.cos(a)*150,vy:Math.sin(a)*150,life:4,dmg:CONFIG.final.bulletDmg})}
     burst(b.x,b.y,'#ff4040',14);blastFx(b.x,b.y,50,'#ff4057');b.split=0;
    }
   if(OB){ // 회전 오브가 적 탄막을 막아낸다
-   const reach=OB.radius+7+Math.hypot(b.vx,b.vy)*dt*.5;
+   const reach=OB.radius+7+Math.hypot(b.vx,b.vy)*wdt*.5;
    for(let i=0;i<s.orbs;i++){const p=orbPos(i);if(Math.hypot(b.x-p.x,b.y-p.y)<reach){b.life=0;b.split=0;burst(b.x,b.y,'#9fd8ff',4);break}}
   }
   for(const g of s.gorbs)if(b.life>0&&Math.hypot(b.x-g.x,b.y-g.y)<g.r+(b.r||5)){b.life=0;b.split=0;burst(b.x,b.y,'#d9b8ff',4);break} // 스나이퍼 큰 구체가 탄막 차단
-  if(b.life>0&&Math.hypot(b.x-s.px,b.y-s.py)<(b.r||0)+13+Math.hypot(b.vx,b.vy)*dt*.5&&s.invuln<=0){
+  if(b.life>0&&Math.hypot(b.x-s.px,b.y-s.py)<(b.r||0)+13+Math.hypot(b.vx,b.vy)*wdt*.5&&s.invuln<=0){
    hurtPlayer(b.dmg||(CONFIG.boss.ringDmg+(s.bossCount-1)*2));
    s.invuln=.4;b.life=0;b.split=0;burst(s.px,s.py,'#ff6b6b',6);
   }
   if(b.x<-20||b.x>W+20||b.y<-20||b.y>H+20)b.life=0;
  });
  s.eb=s.eb.filter(b=>b.life>0);
- if(s.orbs)s.orbAngle+=orbStats(s.orbLevel).speed*dt;
+ if(s.orbs)s.orbAngle+=orbStats(s.orbLevel).speed*wdt;
  const O=s.orbs?orbStats(s.orbLevel):null;
 
  s.enemies.forEach(e=>{
   const ex=s.px-e.x,ey=s.py-e.y,d=Math.hypot(ex,ey)||1;
-  e.slowTime=Math.max(0,(e.slowTime||0)-dt);
+  e.slowTime=Math.max(0,(e.slowTime||0)-wdt);
   let slow=e.slowTime>0?(e.slowFactor||CONFIG.laser.slow):1;
   let mx=ex/d,my=ey/d,sp=e.speed*(s.blood>0?CONFIG.events.bloodSpeed:1);
   if(e.kind==='boss'){
    slow=1-(1-slow)*.4; // 보스는 둔화 효과가 약함
-   const r=bossAI(e,dt,mx,my);mx=r.vx;my=r.vy;sp=r.sp;
+   const r=bossAI(e,wdt,mx,my);mx=r.vx;my=r.vy;sp=r.sp;
    if(e.state==='charge')slow=1;
   }
   if(e.kind==='spitter'){
    if(d<230){mx=-mx;my=-my;sp*=.8}else if(d<290)sp=0;
-   e.fire=(e.fire===undefined?1.5:e.fire)-dt;
+   e.fire=(e.fire===undefined?1.5:e.fire)-wdt;
    if(e.fire<=0&&d<430){
     e.fire=2.4;
-    s.eb.push({x:e.x,y:e.y,vx:ex/d*230,vy:ey/d*230,life:3,dmg:9});
+    s.eb.push({x:e.x,y:e.y,vx:ex/d*240,vy:ey/d*240,life:3,dmg:11+Math.min(8,s.time/60)});
    }
   }else if(e.kind==='charger'){
    if(e.cs===undefined){e.cs='walk';e.ct=1.5+Math.random()*1.5}
-   e.ct-=dt;
+   e.ct-=wdt;
    if(e.cs==='walk'&&e.ct<=0&&d<430){e.cs='wind';e.ct=.7;e.cdx=ex/d;e.cdy=ey/d}
    else if(e.cs==='wind'){sp=0;if(e.ct<=0){e.cs='dash';e.ct=.55}}
    else if(e.cs==='dash'){mx=e.cdx;my=e.cdy;sp=470;slow=1;if(e.ct<=0){e.cs='walk';e.ct=2.4}}
   }else if(e.kind==='teleporter'){
-   e.tp=(e.tp===undefined?2:e.tp)-dt;
+   e.tp=(e.tp===undefined?2:e.tp)-wdt;
    if(e.tp<=0){
     e.tp=3+Math.random()*1.5;const a=Math.random()*Math.PI*2;
     burst(e.x,e.y,e.c,6);
@@ -2628,18 +3049,18 @@ function update(dt,now){
    }
   }else if(e.kind==='healer'){
    if(d<210){mx=-mx;my=-my;sp*=.8}else if(d<260)sp=0;
-   e.ht=(e.ht===undefined?1:e.ht)-dt;
+   e.ht=(e.ht===undefined?1:e.ht)-wdt;
    if(e.ht<=0){e.ht=.6;s.enemies.forEach(o=>{if(o!==e&&o.hp>0&&o.hp<o.maxhp&&Math.hypot(o.x-e.x,o.y-e.y)<140){o.hp=Math.min(o.maxhp,o.hp+o.maxhp*.05);burst(o.x,o.y,'#7dffb0',2)}})}
   }else if(e.kind==='marksman'){
    if(d<240){mx=-mx;my=-my;sp*=.8}else if(d<430)sp=0;
-   e.cd=(e.cd===undefined?2:e.cd)-dt;
+   e.cd=(e.cd===undefined?2:e.cd)-wdt;
    if(e.aim>0){
-    sp=0;e.aim-=dt;
-    if(e.aim<=0)s.eb.push({x:e.x,y:e.y,vx:Math.cos(e.aa)*900,vy:Math.sin(e.aa)*900,life:1.2,dmg:20});
+    sp=0;e.aim-=wdt;
+    if(e.aim<=0)s.eb.push({x:e.x,y:e.y,vx:Math.cos(e.aa)*900,vy:Math.sin(e.aa)*900,life:1.2,dmg:24+Math.min(10,s.time/50)});
    }else if(e.cd<=0&&d<560){e.aim=.8;e.aa=Math.atan2(ey,ex);e.cd=3}
   }else if(e.kind==='bomber'){
    if(e.fuse!==undefined){
-    e.fuse-=dt;sp=0;
+    e.fuse-=wdt;sp=0;
     if(e.fuse<=0){
      if(d<e.r+70&&s.dashTime<=0){hurtPlayer(24);s.invuln=.3}
      burst(e.x,e.y,'#ff6a3d',24);s.kills++;e.hp=0;
@@ -2647,29 +3068,29 @@ function update(dt,now){
    }else if(d<e.r+28)e.fuse=.5;
   }
   const fs=stillField();
-  e.x+=mx*sp*slow*fs*dt;
-  e.y+=my*sp*slow*fs*dt;
+  e.x+=mx*sp*slow*fs*wdt;
+  e.y+=my*sp*slow*fs*wdt;
   if(e.btype==='summoner'||e.btype==='final'){e.x=Math.max(40,Math.min(W-40,e.x));e.y=Math.max(70,Math.min(H-40,e.y))}
-  e.hit=Math.max(0,e.hit-dt);
+  e.hit=Math.max(0,e.hit-wdt);
   if(e.pull&&e.pull.t>0){ // 지뢰 흡인
-   e.pull.t-=dt;const q=Math.min(1,dt*12)*e.pull.k;
+   e.pull.t-=wdt;const q=Math.min(1,wdt*12)*e.pull.k;
    e.x+=(e.pull.x-e.x)*q;e.y+=(e.pull.y-e.y)*q;
   }
 
-  if(d<e.r+11&&s.invuln<=0&&!(e.stun>0)){hurtPlayer(e.dmg*dt);s.invuln=.03} // 기절한 보스는 접촉 피해 없음
+  if(d<e.r+11&&s.invuln<=0&&!(e.stun>0)&&wdt>0){hurtPlayer(e.dmg*wdt);s.invuln=.03} // 기절한 보스는 접촉 피해 없음
 
   if(O&&e.hp>0){
    for(let i=0;i<s.orbs;i++){
     const p=orbPos(i);
-    if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+O.radius)hurtEnemy(e,O.dps*dt*spellM());
+    if(Math.hypot(e.x-p.x,e.y-p.y)<e.r+O.radius)hurtEnemy(e,O.dps*wdt*spellM());
    }
   }
  });
 
- gorbUpdate(dt);bossHazardUpdate(dt);
- laserUpdate(dt);
- chainUpdate(dt);
- sentryUpdate(dt);
+ gorbUpdate(wdt);bossHazardUpdate(wdt);
+ laserUpdate(wdt);
+ chainUpdate(wdt);
+ sentryUpdate(wdt);
 
  // 냉기 폭발
  if(s.nova&&s.time-s.lastNova>Math.max(2.5,CONFIG.nova.cooldown-(s.nova-1)*CONFIG.nova.cooldownStep)){
@@ -2687,6 +3108,7 @@ function update(dt,now){
 
  // 탄환 (관통 탄환이 같은 적을 매 프레임 때리지 않도록 hitSet 사용)
  s.bullets.forEach(b=>{
+  if(s.tstop>0)return; // 시간 정지: 탄환 정지
   b.x+=b.vx*dt;b.y+=b.vy*dt;b.life-=dt;
   if(b.grow)b.sz=1+(CONFIG.special.pistolGrow-1)*Math.max(0,Math.min(1,1-b.life/CONFIG.player.bulletLife)); // ✦ 날아가며 천천히 커짐
   const z=b.sz||1;
@@ -2699,6 +3121,7 @@ function update(dt,now){
  });
  s.bullets=s.bullets.filter(b=>b.life>0);
  s.enemies=s.enemies.filter(e=>e.hp>0);
+ garrowUpdate(dt);
 
  // 경험치
  for(const g of s.gems){
@@ -2965,6 +3388,7 @@ function draw(){
  }
 
  // 스나이퍼 능력 효과 / 보스 위험 요소
+ drawWskillGround();
  (s.mfz||[]).forEach(z=>drawMgFlame(z.x,z.y,z.r,Math.min(1,z.t/.8)*(z.kind==='trail'?.85:1),z.kind));
  s.enemies.forEach(e=>{if(e.hp<=0)return;if(e.mgf)drawMgFlame(e.x,e.y,CONFIG.special.mgFireR+e.r*.5,1,'host');else if(e.mgb)drawMgFlame(e.x,e.y,e.r*.9,.8,'trail')});
  s.szones.forEach(z=>{ctx.save();const fd=Math.min(1,z.t/.6),T=s.time; // 아군 불장판: 청록색 불꽃 (적 장판은 주황·빨강)
@@ -3040,12 +3464,20 @@ function draw(){
   else{ctx.save();ctx.globalAlpha=Math.min(1,f.life/.3);text(f.txt,f.x+1,f.y+1,'#000',18,'center');text(f.txt,f.x,f.y,'#ffb02b',18,'center');ctx.restore()}
  });
 
- // 플레이어
- if(s.invuln<=0||Math.floor(performance.now()/55)%2===0){
-  rect(s.px-10,s.py-10,20,20,'#5ae1eb');rect(s.px-6,s.py-6,12,12,'#b9ffff');
-  rect(s.px-6,s.py-3,3,3,'#142d41');rect(s.px+3,s.py-3,3,3,'#142d41');rect(s.px-5,s.py+5,10,3,'#2d91af');
+ drawWskillAir();
+ // 플레이어 (낙뢰 강타: 점프 높이 / 지중 잠행: 흙무더기)
+ const jh=s.slam?Math.sin(Math.PI*Math.min(1,s.slam.t/s.slam.T))*72:0;
+ if(jh){ctx.save();ctx.globalAlpha=.3;ctx.fillStyle='#000';ctx.beginPath();ctx.ellipse(s.px,s.py+12,12,5,0,0,Math.PI*2);ctx.fill();ctx.restore()}
+ ctx.save();ctx.translate(0,-jh);
+ if(s.dig)drawDigHump();
+ else{
+  if(s.invuln<=0||s.noFlick||Math.floor(performance.now()/55)%2===0){
+   rect(s.px-10,s.py-10,20,20,'#5ae1eb');rect(s.px-6,s.py-6,12,12,'#b9ffff');
+   rect(s.px-6,s.py-3,3,3,'#142d41');rect(s.px+3,s.py-3,3,3,'#142d41');rect(s.px-5,s.py+5,10,3,'#2d91af');
+  }
+  drawHeld();drawWeaponHud();drawWskillPlayerFx();
  }
- drawHeld();drawWeaponHud();
+ ctx.restore();
  if(lv('sniper')&&s.sniperG>0){const full=s.sniperG>=1;rect(s.px-18,s.py+30,36,5,'#0b1020');rect(s.px-17,s.py+31,34*s.sniperG,3,full?(Math.sin(performance.now()/80)>0?'#ffd55c':'#fff3c0'):'#6fd8ff');if(full)text('FULL  ATK+ DEF+',s.px,s.py+46,'#ffd55c',10,'center')}
  if(s.lance){text(lanceCount(s.lance)+' / '+s.lance.need,s.px,s.py-34,'#7fe8ff',16,'center');if(s.lance.chain>0)text('EXTRA ×'+s.lance.chain,s.px,s.py-52,'#ffd55c',13,'center')}
  else if(lv('lance'))text('추가공격 '+lanceNeed(lv('lance'))+'명',s.px,s.py+34,'#7fe8ffaa',11,'center');
@@ -3073,6 +3505,7 @@ function draw(){
   ctx.globalAlpha=mouse.down?1:.75;ctx.strokeStyle=mouse.down?'#ff6b6b':'#ffffff';ctx.lineWidth=2;
   ctx.beginPath();ctx.arc(mouse.x,mouse.y,9,0,Math.PI*2);ctx.moveTo(mouse.x-14,mouse.y);ctx.lineTo(mouse.x-5,mouse.y);ctx.moveTo(mouse.x+5,mouse.y);ctx.lineTo(mouse.x+14,mouse.y);ctx.moveTo(mouse.x,mouse.y-14);ctx.lineTo(mouse.x,mouse.y-5);ctx.moveTo(mouse.x,mouse.y+5);ctx.lineTo(mouse.x,mouse.y+14);ctx.stroke();ctx.restore();
  }
+ drawWskillOverlay();
  rect(0,0,W,48,'#090d17');
  text('PIXEL SURVIVOR',14,30,'#5ae1eb',20);
  text(autoFire||s.weapon==='missile'?'AUTO FIRE':'AIM: MOUSE · HOLD CLICK',W/2+40,30,autoFire||s.weapon==='missile'?'#5bdc8c':'#9eacc8',12,'center');
@@ -3108,6 +3541,7 @@ function draw(){
  }
  {const g=ctx.createRadialGradient(W/2,H/2,H*.42,W/2,H/2,H*.95);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.38)');ctx.fillStyle=g;ctx.fillRect(0,48,W,H-48)} // 화면 가장자리 비네트
  drawCooldowns();
+ drawWskillHud();
  if(s.paused){
   rect(0,0,W,H,'#070b17bb');
   text('PAUSED',W/2,H/2,'#eef2ff',48,'center');
@@ -3159,7 +3593,8 @@ document.addEventListener('keydown',e=>{
  keys[e.key]=true;
  if((e.key==='o'||e.key==='O')&&!e.repeat)devTime5();
  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();
- if((e.key===' '||e.key==='Shift')&&!e.repeat)dash();
+ if(e.key==='Shift'&&!e.repeat)dash();
+ if(e.key===' '&&!e.repeat)useWskill();
  if(e.key==='Escape'){if(state)pause();else if(menuView!=='title')showTitle()}
  if((e.key==='f'||e.key==='F')&&!e.repeat)toggleAuto();
  if(state&&state.choose&&/^[0-9]$/.test(e.key)){
@@ -3177,6 +3612,7 @@ $('pauseBtn').onclick=pause;
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('button');if(b&&!b.classList.contains('skill'))sfx('ui')});
 document.addEventListener('keydown',e=>{if((e.key==='m'||e.key==='M')&&!e.repeat){audInit();const on=!(AUD.sfxOn||AUD.bgmOn);AUD.sfxOn=AUD.bgmOn=on;saveSet();if(menuView==='set'||menuView==='pset')showSettings(menuView==='pset'?'pause':'title');if(on)sfx('ui')}});
 $('dashTouch').onclick=dash;
+$('skillTouch').onclick=useWskill;
 
 // 자동발사 토글 / 마우스 조준 (미사일 제외 무기는 마우스 방향으로 발사)
 const autoBtn=$('autoBtn');
