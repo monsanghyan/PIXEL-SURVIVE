@@ -86,12 +86,12 @@ canvas#game{height:100%;aspect-ratio:auto}
 #overlay.opaque{background:radial-gradient(ellipse at 50% 38%,#16213a 0,#080b16 65%,#04060c 100%)}
 #overlay.opaque::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 2px,transparent 2px 4px);animation:msScan 5s linear infinite;pointer-events:none}
 @keyframes msScan{to{background-position:0 64px}}
-.panel.mapsel{background:none;border:none;box-shadow:none;max-width:1000px;animation:none;overflow:visible;position:relative}
+.panel.mapsel{background:none;border:none;box-shadow:none;max-width:1100px;animation:none;overflow:visible;position:relative}
 .ms-title{font-size:clamp(11px,1.6cqw,17px);letter-spacing:.55em;color:#8fa3c9;margin:0}
 .ms-h{color:var(--gold);font-size:clamp(24px,4.4cqw,46px);margin:6px 0 clamp(12px,2.4cqw,26px);letter-spacing:6px;text-shadow:3px 3px #080b12}
 .ms-cards{display:flex;gap:clamp(8px,2cqw,22px);justify-content:center;position:relative}
-.ms-card{width:clamp(110px,22cqw,230px);background:linear-gradient(#18233a,#0e1626);border:3px solid #34435f;padding:8px;box-shadow:5px 5px #070a12;transition:transform .12s,filter .15s,border-color .12s,box-shadow .15s,opacity .35s;filter:brightness(.5) saturate(.6);animation:msIn .5s both}
-.ms-card:nth-child(2){animation-delay:.12s}.ms-card:nth-child(3){animation-delay:.24s}
+.ms-card{width:clamp(100px,21cqw,230px);background:linear-gradient(#18233a,#0e1626);border:3px solid #34435f;padding:8px;box-shadow:5px 5px #070a12;transition:transform .12s,filter .15s,border-color .12s,box-shadow .15s,opacity .35s;filter:brightness(.5) saturate(.6);animation:msIn .5s both}
+.ms-card:nth-child(2){animation-delay:.12s}.ms-card:nth-child(3){animation-delay:.24s}.ms-card:nth-child(4){animation-delay:.36s}
 @keyframes msIn{from{transform:translateY(30px);opacity:0}to{transform:none;opacity:1}}
 .ms-card canvas{width:100%;height:auto;aspect-ratio:10/7;image-rendering:pixelated;display:block;border:2px solid #0a0f1a}
 .ms-card .nm{margin-top:8px;font-size:clamp(13px,1.9cqw,20px);font-weight:bold;color:#cfd8ee}
@@ -229,6 +229,7 @@ const ctx=canvas.getContext('2d');
 const overlay=document.getElementById('overlay');
 const panel=document.getElementById('panel');
 const W=1440,H=960; // 맵 크기 (1152×768의 1.25배). 3:2 비율 유지 필수, 캔버스 width/height 속성도 같이 바꿀 것
+let WW=W,WH=H,camX=0,camY=0,BIG=false; // [신규] 월드 크기(기존 맵=화면 크기, 큰 맵=더 큼) / 카메라 좌표 / 큰 맵 여부
 const U=1.25,SW=W/U,SH=H/U,TOP=48*U; // UI(아이콘·HUD·글자)는 U배 확대해 원래 크기를 유지 → 월드(캐릭터·적 등)는 상대적으로 1/U로 작아 보임. SW/SH=UI 좌표계 크기, TOP=월드 상단 경계
 ctx.imageSmoothingEnabled=false;
 const $=id=>document.getElementById(id);
@@ -614,7 +615,7 @@ function reset(){
   pierce:0,crit:0,regen:0,regenT:0,hitT:0,xpMult:1,sentryT:0,moveAng:0,stillT:0,sniperG:0,gorbs:[],szones:[],lbeams:[],bbeams:[],bstrikes:[],dbul:[],finalStage:0,finalT:0,ending:false,endT:0,endX:0,endY:0,won:false,
   paused:false,choose:false,choices:[],over:false,skillCounts:{},msg:'',msgT:0,tornados:[],torCd:1,ws:{cd:0,unl:false,evo:false},tstop:0,tsMax:0,tsFlash:0,flash:0,banner:null,nades:[],bombs:[],carpet:null,slam:null,tbolts:[],gale:null,gtrail:[],hmg:0,tshield:0,tshMax:0,dig:null,mounds:[],waterZ:null,bowSk:null,garrow:null,bstorm:null,noAtk:false
  };
- setupMap(state);
+ setupMap(state,FORCE_MAP);
 }
 
 function text(t,x,y,color='#eef2ff',size=22,align='left'){
@@ -649,7 +650,8 @@ function hurtPlayer(n){
 // ===== 적 =====
 function spawn(){
  const side=Math.random()*4|0;let x,y;
- if(side===0){x=Math.random()*W;y=-20}
+ if(BIG){const p=spawnPos();x=p.x;y=p.y} // 큰 맵: 화면 밖 가까운 곳에서 소환
+ else if(side===0){x=Math.random()*W;y=-20}
  else if(side===1){x=W+20;y=Math.random()*H}
  else if(side===2){x=Math.random()*W;y=H+20}
  else{x=-20;y=Math.random()*H}
@@ -699,7 +701,7 @@ function spawnBoss(){
  const s=state,B=CONFIG.boss;
  const bt=BTYPES[s.bossCount%BTYPES.length],info=BINFO[bt];
  const hp=B.hp*(1+s.bossCount*B.hpStep)*info[2];
- const e={x:W/2,y:-40,hp,maxhp:hp,speed:B.speed,dmg:B.dmg,c:info[1],xp:0,r:B.r,kind:'boss',btype:bt,name:info[0],hit:0,t:0,pattern:0,state:'',cT:0};
+ const bp=BIG?spawnPos():{x:W/2,y:-40};const e={x:bp.x,y:bp.y,hp,maxhp:hp,speed:B.speed,dmg:B.dmg,c:info[1],xp:0,r:B.r,kind:'boss',btype:bt,name:info[0],hit:0,t:0,pattern:0,state:'',cT:0};
  s.enemies.push(e);s.boss=e;s.bossCount++;
  s.nextBoss=s.time+B.interval;sfx('boss');
  say('WARNING! '+e.name+' 등장!');
@@ -715,17 +717,17 @@ function startFinal(){
 }
 function spawnFinal(){
  const s=state,F=CONFIG.final;
- const e={x:W/2,y:-60,hp:F.hp,maxhp:F.hp,speed:F.speed,dmg:F.dmg,c:'#b0102a',xp:0,r:F.r,kind:'boss',btype:'final',name:'OVERLORD',hit:0,t:0,pattern:0,state:'',cT:0,def:1};
+ const bp=BIG?spawnPos():{x:W/2,y:-60};const e={x:bp.x,y:bp.y,hp:F.hp,maxhp:F.hp,speed:F.speed,dmg:F.dmg,c:'#b0102a',xp:0,r:F.r,kind:'boss',btype:'final',name:'OVERLORD',hit:0,t:0,pattern:0,state:'',cT:0,def:1};
  s.enemies.push(e);s.boss=e;sfx('final');s.shake=.4;say('최종 보스 OVERLORD 등장!');
 }
-const bossStrike=(x,y,r,dmg,warn)=>state.bstrikes.push({x:Math.max(30,Math.min(W-30,x)),y:Math.max(70,Math.min(H-30,y)),r,dmg,warn,maxw:warn,flash:0});
+const bossStrike=(x,y,r,dmg,warn)=>state.bstrikes.push({x:Math.max(30,Math.min(WW-30,x)),y:Math.max(70,Math.min(WH-30,y)),r,dmg,warn,maxw:warn,flash:0});
 const bossBeam=(e,a,w,dmg,warn,life,rot)=>state.bbeams.push({owner:e,x:e.x,y:e.y,a,w,dmg,warn,life,len:1400,rot});
 const bossOrb=(e,a,sp,r,dmg,split)=>state.eb.push({x:e.x,y:e.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,life:3.4,dmg,r,split});
 function spawnGuards(e,n){
  const s=state,kinds=['spitter','marksman'],list=[];
  for(let i=0;i<n;i++){
   const a=Math.PI*2*i/n+Math.random()*.4,dd=110+Math.random()*70;
-  const g=mkEnemy(kinds[i%2],Math.max(30,Math.min(W-30,e.x+Math.cos(a)*dd)),Math.max(80,Math.min(H-30,e.y+Math.sin(a)*dd)));
+  const g=mkEnemy(kinds[i%2],Math.max(30,Math.min(WW-30,e.x+Math.cos(a)*dd)),Math.max(80,Math.min(WH-30,e.y+Math.sin(a)*dd)));
   s.enemies.push(g);list.push(g);burst(g.x,g.y,g.c,6);
  }
  return list;
@@ -804,7 +806,7 @@ function bossFinal(e,dt,enr){
    e.state='warn';e.cT=.75;
    const E=CONFIG.events;
    if(ph>=2){
-    for(let i=0;i<3;i++)s.zones.push({type:'fire',x:Math.max(60,Math.min(W-60,s.px+(Math.random()-.5)*280)),y:Math.max(110,Math.min(H-60,s.py+(Math.random()-.5)*280)),r:E.fireR,life:E.fireTime,warn:E.fireWarn});
+    for(let i=0;i<3;i++)s.zones.push({type:'fire',x:Math.max(60,Math.min(WW-60,s.px+(Math.random()-.5)*280)),y:Math.max(110,Math.min(WH-60,s.py+(Math.random()-.5)*280)),r:E.fireR,life:E.fireTime,warn:E.fireWarn});
    }
    if(ph>=3)s.enemies.push(mkEnemy('bomber',e.x+34,e.y),mkEnemy('bomber',e.x-34,e.y));
   }
@@ -1005,7 +1007,7 @@ function blastFx(x,y,r,c='#ff9a3d'){sfx('boom');state.fx.push({blast:true,x,y,r,
 const tankiest=()=>state.enemies.reduce((a,b)=>b.hp>a.hp?b:a,state.enemies[0])||null;
 function updateAim(){
  const s=state;
- if(!autoFire&&s.weapon!=='missile')s.aim=Math.atan2(mouse.y-s.py,mouse.x-s.px); // 미사일은 항상 자동 조준
+ if(!autoFire&&s.weapon!=='missile')s.aim=Math.atan2(mouse.y+camY-s.py,mouse.x+camX-s.px); // 미사일은 항상 자동 조준
  else{const t=nearestEnemy();if(t)s.aim=Math.atan2(t.y-s.py,t.x-s.px)}
 }
 // 발사 가능하면 {a: 발사 각도}, 아니면 null (자동: 가까운 적 / 수동: 마우스를 누르는 동안)
@@ -1210,7 +1212,7 @@ function lanceBlast(L){
 function lanceUpdate(dt){
  const s=state,L=s.lance;if(!L)return;
  const C=CONFIG.atk.lance,mv=Math.min(C.speed*dt,L.remain),sp=has('sp_lance');
- s.px=Math.max(16,Math.min(W-16,s.px+L.dx*mv));s.py=Math.max(TOP+7,Math.min(H-16,s.py+L.dy*mv));L.remain-=mv;L.acc+=mv;
+ s.px=Math.max(16,Math.min(WW-16,s.px+L.dx*mv));s.py=Math.max(TOP+7,Math.min(WH-16,s.py+L.dy*mv));L.remain-=mv;L.acc+=mv;
  s.invuln=Math.max(s.invuln,.12);
  s.particles.push({x:s.px,y:s.py,vx:0,vy:0,life:.22,c:'#7fe8ff',size:12});
  for(const e of s.enemies){
@@ -1299,7 +1301,7 @@ function attackUpdate(dt,wdt){
     let pos=null;
     for(let tr=0;tr<6;tr++){
      const a=Math.random()*Math.PI*2,d=M.minRange+Math.random()*(M.range-M.minRange);
-     const x=Math.max(20,Math.min(W-20,s.px+Math.cos(a)*d)),y=Math.max(62,Math.min(H-20,s.py+Math.sin(a)*d));
+     const x=Math.max(20,Math.min(WW-20,s.px+Math.cos(a)*d)),y=Math.max(62,Math.min(WH-20,s.py+Math.sin(a)*d));
      pos=pos||{x,y};
      if(!s.mines.some(m=>Math.hypot(m.x-x,m.y-y)<40)){pos={x,y};break}
     }
@@ -1484,9 +1486,9 @@ function attackUpdate(dt,wdt){
    }
    if(p.big){
     p.carried=p.carried.filter(c=>c.e.hp>0);
-    for(const c of p.carried){c.e.x=cl(p.x-sa*c.off+ca*c.fwd,4,W-4);c.e.y=cl(p.y+ca*c.off+sa*c.fwd,50,H-4);slowE(c.e,.15,0)}
+    for(const c of p.carried){c.e.x=cl(p.x-sa*c.off+ca*c.fwd,4,WW-4);c.e.y=cl(p.y+ca*c.off+sa*c.fwd,50,WH-4);slowE(c.e,.15,0)}
     if(p.life<=0){ // 끝에 도달: 작은 범위의 상승 기류 생성
-     {const Ru=SP.swordUpR,cx=cl(p.x+ca*p.R*.85,60,W-60),cy=cl(p.y+sa*p.R*.85,90,H-60); // 참격 모양 상승 기류: 호의 원점을 뒤로 물려 초승달 중심이 끝 지점에 오게 함
+     {const Ru=SP.swordUpR,cx=cl(p.x+ca*p.R*.85,60,WW-60),cy=cl(p.y+sa*p.R*.85,90,WH-60); // 참격 모양 상승 기류: 호의 원점을 뒤로 물려 초승달 중심이 끝 지점에 오게 함
      (s.updrafts||(s.updrafts=[])).push({x:cx-ca*Ru*.8,y:cy-sa*Ru*.8,a:p.a,r:Ru,arc:SP.swordUpArc*Math.PI/180,t:SP.swordUpT,T:SP.swordUpT,tk:0,dmg:p.dmg/SP.swordBigMult})}
      sfx('boom');s.shake=Math.max(s.shake,.2);
     }
@@ -1545,7 +1547,7 @@ function bossSummoner(e,dt,enr){
  e.tp=(e.tp||0)+dt;
  if(d<140&&e.tp>3){
   e.tp=0;burst(e.x,e.y,e.c,20);
-  e.x=Math.max(60,Math.min(W-60,W-s.px));e.y=Math.max(120,Math.min(H-60,H+TOP-s.py));
+  if(BIG){e.x=Math.max(60,Math.min(WW-60,2*s.px-e.x));e.y=Math.max(120,Math.min(WH-60,2*s.py-e.y))}else{e.x=Math.max(60,Math.min(W-60,W-s.px));e.y=Math.max(120,Math.min(H-60,H+TOP-s.py))}
   burst(e.x,e.y,e.c,20);
  }
  if(e.t>=B.attackEvery*.9/enr){
@@ -1576,7 +1578,7 @@ function bossInferno(e,dt,enr){
   else{
    const E=CONFIG.events;
    for(let i=0;i<3+(enr>1?2:0);i++)s.zones.push({type:'fire',
-    x:Math.max(60,Math.min(W-60,s.px+(Math.random()-.5)*260)),y:Math.max(110,Math.min(H-60,s.py+(Math.random()-.5)*260)),
+    x:Math.max(60,Math.min(WW-60,s.px+(Math.random()-.5)*260)),y:Math.max(110,Math.min(WH-60,s.py+(Math.random()-.5)*260)),
     r:E.fireR,life:E.fireTime,warn:E.fireWarn});
    say('화염 소환!');
   }
@@ -1589,7 +1591,7 @@ function bossGraviton(e,dt,enr){
  const s=state,B=CONFIG.boss,dx=s.px-e.x,dy=s.py-e.y,d=Math.hypot(dx,dy)||1;
  if(e.state==='pull'){
   e.cT-=dt;
-  if(d>40){s.px=Math.max(16,Math.min(W-16,s.px-dx/d*150*dt));s.py=Math.max(TOP+7,Math.min(H-16,s.py-dy/d*150*dt))}
+  if(d>40){s.px=Math.max(16,Math.min(WW-16,s.px-dx/d*150*dt));s.py=Math.max(TOP+7,Math.min(WH-16,s.py-dy/d*150*dt))}
   if(e.cT<=0){e.state='';e.t=0;const n=16+s.bossCount*2;for(let i=0;i<n;i++)ebAim(e,Math.PI*2*i/n,200,12+s.bossCount)}
   return{vx:0,vy:0,sp:0};
  }
@@ -1782,12 +1784,76 @@ function auraUpdate(dt){
 // =====================================================================
 // [신규] 맵 시스템: 초원 / 얼음 / 화염 (게임 시작 때 랜덤)
 // =====================================================================
-const MAP_KEYS=['grass','ice','fire'];
+const MAP_KEYS=['grass','ice','fire','wild'];
+const FORCE_MAP=(()=>{try{const m=new URLSearchParams(location.search).get('map');return MAP_KEYS.includes(m)?m:null}catch(e){return null}})(); // 테스트용: 주소 뒤에 ?map=wild
 const MAP_INFO={
  grass:{name:'초원',en:'GRASSLAND',ic:'🌿',bg:'#13211a',grid:'#1a2c21',col:'#7dffb0',events:[0,3,5]},
  ice:{name:'얼음',en:'FROZEN FIELD',ic:'❄️',bg:'#0f1a2b',grid:'#172640',col:'#9fe0ff',events:[1,4,5,7]},
- fire:{name:'화염',en:'VOLCANO',ic:'🔥',bg:'#1a1013',grid:'#291a1e',col:'#ff9a3d',events:[2,5,6]}
+ fire:{name:'화염',en:'VOLCANO',ic:'🔥',bg:'#1a1013',grid:'#291a1e',col:'#ff9a3d',events:[2,5,6]},
+ wild:{name:'황야',en:'WILDERNESS',ic:'🌾',bg:'#1d2316',grid:'#262e1d',col:'#e6d37a',events:[0,3,5],big:true} // [큰 맵] 카메라가 플레이어를 따라감
 }; // events: 0 암전 · 1 물웅덩이 · 2 화염 · 3 번개 · 5 블러드 문 · 6 적 메테오 · 7 눈보라
+
+// =====================================================================
+// [신규] 큰 맵 시스템: 플레이어 중앙 고정 카메라 + 화면 밖 가까운 곳에서 적 소환 (뱀파이어 서바이벌 방식)
+// =====================================================================
+const BIGMAP={w:4800,h:3200,pad:70,recycle:1150,decor:340}; // 월드 크기 / 스폰 거리(화면 가장자리 바깥) / 이 거리보다 멀어진 적은 재배치 / 장식 개수
+function updateCam(){const s=state;if(BIG&&s){camX=s.px-W/2;camY=s.py-(TOP+H)/2}else{camX=0;camY=0}} // 플레이어를 화면(HUD 아래 영역) 중앙에 둔다
+function spawnPos(){ // 화면 바로 바깥 직사각형 테두리에서, 월드 안쪽인 좌표를 고른다
+ const s=state,hx=W/2+BIGMAP.pad,hy=(H-TOP)/2+BIGMAP.pad;
+ for(let i=0;i<40;i++){
+  let r=Math.random()*(4*hx+4*hy),x,y;const out=Math.random()*45;
+  if(r<2*hx){x=s.px-hx+r;y=s.py-hy-out}
+  else if((r-=2*hx)<2*hx){x=s.px-hx+r;y=s.py+hy+out}
+  else if((r-=2*hx)<2*hy){x=s.px-hx-out;y=s.py-hy+r}
+  else{r-=2*hy;x=s.px+hx+out;y=s.py-hy+r}
+  if(x>24&&x<WW-24&&y>TOP+24&&y<WH-24)return{x,y};
+ }
+ return{x:Math.max(24,Math.min(WW-24,s.px+(Math.random()<.5?-hx:hx))),y:Math.max(TOP+24,Math.min(WH-24,s.py+(Math.random()-.5)*2*hy))};
+}
+function bakeBigGround(R,I){ // 반복 타일(512px) + 월드 전체에 흩뿌린 장식
+ const T=512,cv=document.createElement('canvas');cv.width=cv.height=T;const c=cv.getContext('2d');
+ c.fillStyle=I.bg;c.fillRect(0,0,T,T);
+ for(let i=0;i<16;i++){const rx=40+R()*60,ry=22+R()*34;c.globalAlpha=.3;c.fillStyle=R()<.5?'#2a3820':'#171c10';c.beginPath();c.ellipse(rx+R()*(T-2*rx),ry+R()*(T-2*ry),rx,ry,0,0,6.29);c.fill()}
+ c.globalAlpha=1;c.strokeStyle=I.grid;c.lineWidth=1;
+ for(let i=0;i<=T;i+=32){c.beginPath();c.moveTo(i+.5,0);c.lineTo(i+.5,T);c.stroke();c.beginPath();c.moveTo(0,i+.5);c.lineTo(T,i+.5);c.stroke()}
+ for(let i=0;i<170;i++){c.fillStyle=['#2e3d22','#3a4a2a','#4a5a32','#5a5230'][R()*4|0];c.fillRect(2+R()*(T-6)|0,2+R()*(T-8)|0,1,2+(R()*3|0))}
+ for(let i=0;i<30;i++){const x=4+R()*(T-8)|0,y=4+R()*(T-8)|0;c.fillStyle='#46402a';c.fillRect(x,y,3,2);c.fillStyle='#5c5538';c.fillRect(x,y,3,1)}
+ const decor=[],kinds=['rock','bush','stump','flower','tuft','tuft','flower','bush'];
+ for(let i=0;i<BIGMAP.decor;i++){
+  const k=kinds[R()*kinds.length|0],x=60+R()*(BIGMAP.w-120),y=TOP+60+R()*(BIGMAP.h-TOP-120);
+  if(Math.hypot(x-BIGMAP.w/2,y-(TOP+BIGMAP.h)/2)<150)continue; // 시작 지점 주변은 비워 둔다
+  decor.push({k,x,y,w:12+(R()*18|0),h:9+(R()*10|0),c:['#ff4d5e','#ffd84d','#ff9fd0','#9fe0ff','#fff'][R()*5|0]});
+ }
+ return{pat:ctx.createPattern(cv,'repeat'),decor};
+}
+function drawBigDecor(d){
+ const x=d.x|0,y=d.y|0;
+ if(d.k==='rock'){const w=d.w,h=d.h;ctx.fillStyle='rgba(0,0,0,.28)';ctx.fillRect(x-1,y+h-1,w+4,4);ctx.fillStyle='#2c3037';ctx.fillRect(x-1,y-1,w+2,h+2);ctx.fillStyle='#6b7280';ctx.fillRect(x,y,w,h);ctx.fillStyle='#8a93a3';ctx.fillRect(x,y,w,2);ctx.fillStyle='#4b5260';ctx.fillRect(x+w-3,y+2,3,h-2)}
+ else if(d.k==='bush'){const w=d.w;ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x-2,y+9,w+4,4);ctx.fillStyle='#1f3a22';ctx.fillRect(x,y+2,w,9);ctx.fillRect(x+2,y-1,w-4,4);ctx.fillStyle='#2f5a34';ctx.fillRect(x+2,y,w-6,4);ctx.fillRect(x+1,y+4,5,3);ctx.fillStyle='#4a8a4a';ctx.fillRect(x+4,y,3,2)}
+ else if(d.k==='stump'){ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(x-2,y+9,16,4);ctx.fillStyle='#3a2616';ctx.fillRect(x,y+2,12,9);ctx.fillStyle='#6b4528';ctx.fillRect(x,y,12,4);ctx.fillStyle='#a47a48';ctx.fillRect(x+2,y+1,8,2)}
+ else if(d.k==='flower'){ctx.fillStyle='#2f7a3a';ctx.fillRect(x,y+3,1,5);ctx.fillStyle=d.c;ctx.fillRect(x-2,y,5,3);ctx.fillRect(x-1,y-1,3,5);ctx.fillStyle='#fff';ctx.fillRect(x,y+1,1,1)}
+ else{ctx.fillStyle='#3a5a2a';ctx.fillRect(x,y,1,5);ctx.fillRect(x+2,y+1,1,4);ctx.fillRect(x-2,y+2,1,3);ctx.fillStyle='#5f8a3a';ctx.fillRect(x+1,y,1,3)}
+}
+function drawBigGround(s){ // 월드 좌표계(카메라 적용 상태)
+ const G=s.bigGround,I=MAP_INFO[s.map];if(!G)return;
+ ctx.fillStyle='#06080d';ctx.fillRect(camX-8,camY-8,W+16,H+16); // 월드 밖: 심연
+ const x0=Math.max(0,camX),y0=Math.max(TOP,camY),x1=Math.min(WW,camX+W),y1=Math.min(WH,camY+H);
+ if(x1>x0&&y1>y0){ctx.fillStyle=G.pat;ctx.fillRect(x0,y0,x1-x0,y1-y0)}
+ for(const d of G.decor)if(d.x>camX-50&&d.x<camX+W+50&&d.y>camY-40&&d.y<camY+H+40)drawBigDecor(d);
+ // 월드 경계선
+ ctx.save();ctx.lineWidth=10;ctx.strokeStyle='#0a0d14';ctx.strokeRect(-5,TOP-5,WW+10,WH-TOP+10);
+ ctx.lineWidth=4;ctx.strokeStyle=I.col;ctx.globalAlpha=.75;ctx.strokeRect(0,TOP,WW,WH-TOP);
+ ctx.setLineDash([18,14]);ctx.strokeStyle='#06080d';ctx.globalAlpha=.9;ctx.strokeRect(0,TOP,WW,WH-TOP);ctx.restore();
+}
+function drawBigMinimap(s){ // UI 좌표계(SW×SH): 우상단 미니맵
+ const mw=124,k=mw/WW,mh=Math.round((WH-TOP)*k),mx=SW-mw-12,my=56;
+ ctx.save();ctx.globalAlpha=.88;rect(mx-2,my-2,mw+4,mh+4,'#090d17');ctx.globalAlpha=1;rect(mx,my,mw,mh,'#1d2316');
+ ctx.beginPath();ctx.rect(mx,my,mw,mh);ctx.clip();
+ ctx.strokeStyle='rgba(255,255,255,.6)';ctx.lineWidth=1;ctx.strokeRect(mx+camX*k+.5,my+camY*k+.5,W*k,(H-TOP)*k);
+ if(s.boss&&s.boss.hp>0)rect(mx+s.boss.x*k-2,my+(s.boss.y-TOP)*k-2,4,4,'#ff4057');
+ rect(mx+s.px*k-2,my+(s.py-TOP)*k-2,4,4,'#5ae1eb');ctx.restore();
+ ctx.save();ctx.strokeStyle=MAP_INFO[s.map].col;ctx.lineWidth=1;ctx.strokeRect(mx-1.5,my-1.5,mw+3,mh+3);ctx.restore();
+}
 const FLOWERS={
  thorn:{n:'가시꽃',p:'#ff4d5e',c:'#ffd0d4',lb:'적 피해',w:25},
  heal:{n:'치유꽃',p:'#ff9fd0',c:'#fff1f8',lb:'회복',w:18},
@@ -1828,7 +1894,7 @@ function wallPush(o,r){ // 원(o.x,o.y,r)과 벽 충돌 해소. 밀려난 방향
  }
  return hit?{nx,ny}:null;
 }
-function wallPlayer(){const s=state;if(!s.hasWalls)return;const o={x:s.px,y:s.py};wallPush(o,10);s.px=Math.max(16,Math.min(W-16,o.x));s.py=Math.max(TOP+7,Math.min(H-16,o.y))}
+function wallPlayer(){const s=state;if(!s.hasWalls)return;const o={x:s.px,y:s.py};wallPush(o,10);s.px=Math.max(16,Math.min(WW-16,o.x));s.py=Math.max(TOP+7,Math.min(WH-16,o.y))}
 // ---- 길찾기 격자: 벽·용암(다리 제외)은 막힘. 플레이어 위치에서 BFS → 적이 미로/다리를 따라 이동 ----
 function ellPts(cx,cy,rx,ry,a0,a1){const n=Math.max(4,Math.ceil((a1-a0)/.12)),p=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;p.push([Math.round(cx+Math.cos(a)*rx),Math.round(cy+Math.sin(a)*ry)])}return p}
 // ---- 얼음 맵: 짧고 얇은 곡선 벽 조각들로 이루어진 다채로운 길 ----
@@ -1962,7 +2028,10 @@ const warmAt=(x,y)=>{const s=state;return !!(s.camps&&s.camps.some(k=>Math.hypot
 
 function setupMap(s,force){
  const key=force||MAP_KEYS[Math.random()*MAP_KEYS.length|0],R=mapRng((Math.random()*1e9)|0),J=(v,a)=>v+(R()-.5)*a;
- Object.assign(s,{map:key,walls:[],cwalls:[],hasWalls:true,nav:null,iceAreas:[],iceGlints:[],iceRoads:[],camps:[],lava:null,bridges:[],flowers:[],flT:CONFIG.map.flowerFirst,bliz:0,blizMax:1,cold:0,frozen:0,metS:0,metT:0,fBuff:0,fDebuff:0,flSeen:false});
+ Object.assign(s,{map:key,walls:[],cwalls:[],hasWalls:true,nav:null,iceAreas:[],iceGlints:[],iceRoads:[],camps:[],lava:null,bridges:[],flowers:[],flT:CONFIG.map.flowerFirst,bliz:0,blizMax:1,cold:0,frozen:0,metS:0,metT:0,fBuff:0,fDebuff:0,flSeen:false,bigGround:null});
+ BIG=!!(MAP_INFO[key]&&MAP_INFO[key].big);WW=BIG?BIGMAP.w:W;WH=BIG?BIGMAP.h:H;s.big=BIG; // 큰 맵 여부에 따라 월드 크기 결정
+ if(BIG){s.px=WW/2;s.py=(TOP+WH)/2;s.hasWalls=false}
+ updateCam();
  const add=(a,k)=>a.forEach(([x,y,w,h])=>s.walls.push({x:Math.round(J(x,28)),y:Math.round(J(y,28)),w,h,k:Array.isArray(k)?k[R()*k.length|0]:k,seed:(R()*1e6)|0}));
  if(key==='grass'){
   add([[190,190,120,70],[1110,170,100,90],[400,410,80,110],[990,370,130,70],[290,720,110,80],[1060,730,120,90],[690,200,90,60],[620,810,100,70],[150,470,70,70],[1270,550,70,90],[850,660,60,60],[480,150,70,60]],'rock');
@@ -1974,6 +2043,8 @@ function setupMap(s,force){
   s.iceAreas=SK.areas.map(d=>({poly:buildArea(d,cc=>cc.map(([x,y])=>sk(x,y)))}));
   s.iceGlints=[];s.iceAreas.forEach(a=>{const xs=a.poly.map(p=>p[0]),ys=a.poly.map(p=>p[1]),x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);for(let i=0,n=0;i<200&&n<14;i++){const x=x0+R()*(x1-x0),y=y0+R()*(y1-y0);if(pip(x,y,a.poly)){s.iceGlints.push({x,y,ph:R()*6.28});n++}}});
   s.camps=SK.camps.map(([x,y])=>{const p=sk(x,y);return{x:Math.round(p[0]),y:Math.round(p[1])}});
+ }else if(key==='wild'){ // 큰 맵: 장애물 없는 탁 트인 황야 (시스템 확인용 간단한 맵)
+  s.bigGround=bakeBigGround(R,MAP_INFO.wild);
  }else{
   const pts=[[-60,480],[260,525],[520,470],[760,530],[1040,480],[1300,525],[1500,490]];
   s.lava={pts,r:58,bub:[]};
@@ -1981,8 +2052,8 @@ function setupMap(s,force){
   [170,520,720,1190].forEach(bx=>{const ry=riverY(pts,bx);s.bridges.push({x:bx-44,y:Math.round(ry-82),w:88,h:164})});
   add([[220,200,110,70],[560,170,100,80],[900,230,120,70],[1200,170,100,90],[280,780,100,90],[620,740,120,70],[1000,800,110,80],[1260,720,90,80],[110,650,80,80],[1330,320,80,90]],['obsidian','basalt','darkrock']);
  }
- if(key!=='grass')buildNav(s);
- s.mapCv=bakeMap(s,R);
+ if(key!=='grass'&&!BIG)buildNav(s);
+ s.mapCv=BIG?null:bakeMap(s,R);
 }
 function announceMap(){const s=state,I=MAP_INFO[s.map];if(I)banner(I.ic+' '+I.name+' 맵',I.en,I.col)}
 
@@ -2081,7 +2152,7 @@ function flowerPulse(f){
  if(f.type==='thorn'){s.enemies.forEach(e=>{if(e.hp>0&&Math.hypot(e.x-f.x,e.y-f.y)<R+e.r)hurtEnemy(e,M.thornDmg,true)});burst(f.x,f.y,F.p,10)}
  else if(f.type==='heal'){if(near&&s.hp<s.maxhp){s.hp=Math.min(s.maxhp,s.hp+s.maxhp*M.healPct);sfx('heal');burst(s.px,s.py,F.p,6)}else burst(f.x,f.y,F.p,4)}
  else if(f.type==='poison'){burst(f.x,f.y,F.p,8);if(near&&s.invuln<=0){hurtPlayer(M.poisonDmg);s.invuln=.15}}
- else if(f.type==='water'){s.zones.push({type:'puddle',x:f.x,y:f.y,r:M.waterR,life:M.waterLife,warn:0});burst(f.x,f.y,F.p,18);sfx('heal');f.life=1.2}
+ else if(f.type==='water'){if(f.watered)return;f.watered=true;s.zones.push({type:'puddle',x:f.x,y:f.y,r:M.waterR,life:M.waterLife,warn:0});burst(f.x,f.y,F.p,18);sfx('heal');f.life=1.2}
  else if(f.type==='buff'){if(near){s.fBuff=M.buffT;burst(s.px,s.py,F.p,10);sfx('select')}else burst(f.x,f.y,F.p,4)}
  else if(f.type==='debuff'){if(near){s.fDebuff=M.debuffT;burst(s.px,s.py,'#9fb4c8',10);sfx('select')}else burst(f.x,f.y,F.p,4)}
 }
@@ -2198,6 +2269,7 @@ function drawSnow(s,a){
 function drawMapUi(){ // UI 좌표계(SW×SH)
  const s=state;if(!s||!s.map)return;
  let y=68;
+ if(s.big)drawBigMinimap(s);
  if(s.fBuff>0){text('⭐ 꽃 버프 '+s.fBuff.toFixed(1)+'s  공격↑ 이속↑',14,y,'#ffd84d',13);y+=18}
  if(s.fDebuff>0){text('🌀 꽃 약화 '+s.fDebuff.toFixed(1)+'s  공격↓ 이속↓',14,y,'#9fb4c8',13);y+=18}
  if(s.map==='ice'&&(s.bliz>0||s.cold>.02||s.frozen>0)){
@@ -2222,14 +2294,14 @@ function eventsUpdate(dt){
   s.stormT-=dt;
   if(s.stormT<=0){
    s.stormT=E.stormEvery;const a=Math.random()*Math.PI*2,d=Math.random()<.4?Math.random()*70:Math.random()*320;
-   s.zones.push({type:'bolt',x:cl(s.px+Math.cos(a)*d,30,W-30),y:cl(s.py+Math.sin(a)*d,70,H-30),r:E.stormR,life:.25,warn:E.stormWarn});
+   s.zones.push({type:'bolt',x:cl(s.px+Math.cos(a)*d,30,WW-30),y:cl(s.py+Math.sin(a)*d,70,WH-30),r:E.stormR,life:.25,warn:E.stormWarn});
   }
  }
  if(s.metS>0){
   s.metS-=dt;s.metT-=dt;
   if(s.metT<=0){
    const MP=CONFIG.map;s.metT=MP.meteorEvery;const a=Math.random()*Math.PI*2,d=Math.random()<.45?Math.random()*60:Math.random()*300;
-   s.zones.push({type:'emet',x:cl(s.px+Math.cos(a)*d,40,W-40),y:cl(s.py+Math.sin(a)*d,TOP+40,H-40),r:MP.meteorR,life:.4,warn:MP.meteorWarn,w0:MP.meteorWarn});
+   s.zones.push({type:'emet',x:cl(s.px+Math.cos(a)*d,40,WW-40),y:cl(s.py+Math.sin(a)*d,TOP+40,WH-40),r:MP.meteorR,life:.4,warn:MP.meteorWarn,w0:MP.meteorWarn});
   }
  }
  if(s.time>=s.nextEvent&&!s.finalStage){
@@ -2400,7 +2472,7 @@ function sentryUpdate(dt){
    s.enemies.forEach(o=>{if(o.hp>0&&Math.hypot(o.x-b.x,o.y-b.y)<b.r+o.r)hurtEnemy(o,b.dmg*(o===e?1:.5))});
    blastFx(b.x,b.y,b.r,'#ffb347');burst(b.x,b.y,'#ffd27a',5);b.life=0;
   }
-  if(b.x<-30||b.x>W+30||b.y<-30||b.y>H+30)b.life=0;
+  if(b.x<camX-30||b.x>camX+W+30||b.y<camY-30||b.y>camY+H+30)b.life=0;
  });
  s.dbul=s.dbul.filter(b=>b.life>0);
  if(!l)return;
@@ -2802,6 +2874,7 @@ const MAP_DEX=()=>{
   {id:'grass',group:G0,name:'초원 맵',sub:'GRASSLAND',emoji:'🌿',bg:'#13211a',col:'#7dffb0',desc:'바위 벽이 곳곳에 서 있는 넓은 평원. 가끔 무작위 위치에 꽃이 피어나며 색마다 전혀 다른 효과를 낸다. 이곳에서는 특수 이벤트가 번개 폭풍·블러드 문·암전만 일어난다.',rows:[['벽','바위 (이동·적 탄환 차단)'],['고유 요소','꽃 6종'],['특수 이벤트','번개 폭풍 · 블러드 문 · 암전']]},
   {id:'ice',group:G0,name:'얼음 맵',sub:'FROZEN FIELD',emoji:'❄️',bg:'#0f1a2b',col:'#9fe0ff',desc:'길게 휘어진 얼음 벽이 여러 가닥 놓인 설원. 벽이 끊어진 곳이 곧 길이며, 길 폭은 보스도 지나갈 만큼 넓다. 막다른 길이 없고, 빈 공간은 얼음 바닥과 모닥불로 채워져 있다. 눈보라가 오면 모닥불로 피하지 않으면 얼어붙는다.',rows:[['벽','긴 곡선 얼음 벽 10가닥 (이동·적 탄환 차단)'],['고유 요소','얼음 바닥 3곳 · 모닥불 3곳'],['특수 이벤트','블러드 문 · 눈보라 · 물웅덩이 · 빙판']]},
   {id:'fire',group:G0,name:'화염 맵',sub:'VOLCANO',emoji:'🔥',bg:'#1a1013',col:'#ff9a3d',desc:'흑요석·흑암·현무암 벽이 솟은 화산 지대. 중앙을 용암 강이 가로지르며, 적은 용암을 피해 다리 4개로만 건너온다. 플레이어는 용암을 그냥 지나갈 수 있지만 큰 피해를 입는다. 특수 이벤트는 화염·적 메테오·블러드 문만 일어난다.',rows:[['벽','흑요석 · 흑암 · 현무암 (이동·적 탄환 차단)'],['고유 요소','중앙 용암 강 · 다리 4개'],['특수 이벤트','화염 · 적 메테오 · 블러드 문']]},
+   {id:'wild',group:G0,name:'황야 맵 (큰 맵)',sub:'WILDERNESS',emoji:'🌾',bg:'#1d2316',col:'#e6d37a',desc:'화면 몇 배 크기의 넓은 맵. 카메라가 플레이어를 중앙에 두고 따라다니며, 적은 화면 바로 바깥에서 나타나 플레이어를 쫓아온다. 플레이어에게서 너무 멀어진 적은 다시 가까운 화면 밖으로 재배치된다. 이곳에서는 특수 이벤트가 번개 폭풍·블러드 문·암전만 일어난다.',rows:[['맵 크기',BIGMAP.w+' × '+BIGMAP.h+'px (화면의 약 '+(BIGMAP.w/W).toFixed(1)+'배 × '+(BIGMAP.h/H).toFixed(1)+'배)'],['시점','플레이어 중앙 고정 카메라 · 우상단 미니맵'],['적 소환','화면 가장자리 바깥 약 '+BIGMAP.pad+'px 지점'],['장애물','없음 (바닥 장식만 있음)'],['특수 이벤트','번개 폭풍 · 블러드 문 · 암전']]},
   {id:'rock',group:G1,name:'바위 벽',sub:'이동 차단',emoji:'🪨',bg:'#13211a',col:'#9aa3b3',desc:'초원 곳곳의 바위. 플레이어와 지상 적은 통과할 수 없고, 적 탄환도 바위에 막혀 사라진다. 적은 벽면을 따라 돌아서 쫓아온다. 아군 공격은 바위를 통과한다.',rows:[['개수','약 12개 (위치 약간 무작위)'],['보스·날벌레','벽을 통과']]},
   fl('thorn','붉은 가시를 두른 꽃. 개화하면 범위 안의 적에게 주기적으로 피해를 준다. 플레이어에게는 해롭지 않다.','범위 내 적에게 '+M.thornDmg+' 피해'),
   fl('heal','분홍빛 치유의 꽃. 범위 안에 서 있으면 체력이 차오른다.','범위 내 플레이어 최대 체력 '+(M.healPct*100)+'% 회복'),
@@ -2947,7 +3020,7 @@ function pickWeapon(w){
 // =====================================================================
 // 맵 선택 연출: 게임 시작 → 맵 룰렛 → 결정 연출 → 무기 선택
 // =====================================================================
-const MAP_FLAVOR={grass:'바위 사이로 꽃이 피어나는 평원 — 꽃의 색을 읽어라',ice:'길게 휘어진 얼음 벽이 끊어진 설원 — 눈보라가 오면 모닥불로!',fire:'용암 강이 흐르는 화산 — 적은 다리로만 건너온다'};
+const MAP_FLAVOR={grass:'바위 사이로 꽃이 피어나는 평원 — 꽃의 색을 읽어라',ice:'길게 휘어진 얼음 벽이 끊어진 설원 — 눈보라가 오면 모닥불로!',fire:'용암 강이 흐르는 화산 — 적은 다리로만 건너온다',wild:'끝없이 펼쳐진 넓은 황야 — 화면 밖에서 몰려드는 적을 상대하라'};
 const EV_NAME={0:'암전',1:'물웅덩이',2:'화염',3:'번개 폭풍',4:'빙판',5:'블러드 문',6:'적 메테오',7:'눈보라'};
 function mapThumb(key){ // 카드용 픽셀 미리보기
  const cv=document.createElement('canvas');cv.width=100;cv.height=70;const c=cv.getContext('2d'),I=MAP_INFO[key],R=mapRng(key.length*977+13);
@@ -2963,6 +3036,13 @@ function mapThumb(key){ // 카드용 픽셀 미리보기
   SK.camps.forEach(p=>{const[x,y]=q(p),g=c.createRadialGradient(x,y,1,x,y,13);g.addColorStop(0,'rgba(255,170,70,.95)');g.addColorStop(1,'rgba(255,120,40,0)');c.fillStyle=g;c.fillRect(x-14,y-14,28,28);c.fillStyle='#ffb347';c.fillRect(x-1,y-2,3,4);c.fillStyle='#ff6a1f';c.fillRect(x-2,y,5,2)});
   SK.walls.forEach(w=>{c.beginPath();splinePts(w,8).forEach((p,i)=>{const[x,y]=q(p);i?c.lineTo(x,y):c.moveTo(x,y)});c.strokeStyle='#27506f';c.lineWidth=5;c.stroke();c.strokeStyle='#7fb8e0';c.lineWidth=3;c.stroke();c.strokeStyle='#d8f2ff';c.lineWidth=1;c.stroke()});
   c.fillStyle='#fff';for(let i=0;i<22;i++)c.fillRect(R()*100|0,R()*70|0,1,1);
+  }else if(key==='wild'){
+   for(let i=0;i<50;i++){c.fillStyle=['#2e3d22','#3a4a2a','#4a5a32'][R()*3|0];c.fillRect(R()*100|0,R()*70|0,1,3)}
+   [[10,8,'#6b7280'],[84,12,'#6b7280'],[14,56,'#6b7280'],[88,54,'#6b7280']].forEach(([x,y,col])=>{c.fillStyle='#2c3037';c.fillRect(x-1,y-1,10,8);c.fillStyle=col;c.fillRect(x,y,8,6);c.fillStyle='#8a93a3';c.fillRect(x,y,8,1)});
+   [[26,16],[74,60],[30,60],[70,10]].forEach(([x,y])=>{c.fillStyle='#1f3a22';c.fillRect(x,y,9,6);c.fillStyle='#2f5a34';c.fillRect(x+1,y,6,3)});
+   c.save();c.setLineDash([4,3]);c.strokeStyle='rgba(255,255,255,.7)';c.lineWidth=1;c.strokeRect(22.5,16.5,55,37);c.restore(); // 화면 영역
+   [[10,30],[18,64],[88,28],[94,46],[50,6],[40,66],[66,5],[6,12]].forEach(([x,y])=>{c.fillStyle='#ff4057';c.fillRect(x-2,y-2,4,4);c.fillStyle='#ffd0d4';c.fillRect(x-1,y-1,1,1)}); // 화면 밖 적
+   c.fillStyle='#0b2a31';c.fillRect(46,32,8,8);c.fillStyle='#5ae1eb';c.fillRect(47,33,6,6);c.fillStyle='#b9ffff';c.fillRect(48,34,2,2); // 중앙 플레이어
  }else{
   c.strokeStyle='#1c0807';c.lineWidth=18;c.beginPath();c.moveTo(-4,36);c.bezierCurveTo(24,42,40,28,56,34);c.bezierCurveTo(74,40,86,30,104,34);c.stroke();
   c.strokeStyle='#7a220c';c.lineWidth=15;c.stroke();c.strokeStyle='#c2410f';c.lineWidth=11;c.stroke();c.strokeStyle='#ffd55c';c.lineWidth=2;c.setLineDash([6,8]);c.stroke();c.setLineDash([]);
@@ -3008,8 +3088,8 @@ function showMapSelect(done){
  msKey=e=>{e.preventDefault();e.stopImmediatePropagation();skip()};msClick=()=>skip();
  window.addEventListener('keydown',msKey,true);overlay.addEventListener('click',msClick);
  // 룰렛: 빠르게 돌다가 점점 느려지며 선택된 맵에 멈춘다
- const start=Math.random()*order.length|0,N=12+((target-((start+12)%3)+3)%3);let tc=900;
- for(let i=0;i<=N;i++){const idx=(start+i)%3,d=55+i*i*1.5+(i===N?280:0);tc+=d;at(tc,()=>{setOn(idx);sfx('select')})}
+ const nn=order.length,start=Math.random()*nn|0,N=12+((target-((start+12)%nn)+nn)%nn);let tc=900;
+ for(let i=0;i<=N;i++){const idx=(start+i)%nn,d=55+i*i*1.5+(i===N?280:0);tc+=d;at(tc,()=>{setOn(idx);sfx('select')})}
  at(tc+520,land);
 }
 function begin(){
@@ -3216,7 +3296,7 @@ function banner(txt,sub,c){state.banner={txt,sub,c:c||'#ffd55c',t:1.4,T:1.4}}
 function distPoly(px,py,pts){let m=1e9;for(let i=1;i<pts.length;i++){const[x1,y1]=pts[i-1],[x2,y2]=pts[i],dx=x2-x1,dy=y2-y1,l2=dx*dx+dy*dy||1,t=Math.max(0,Math.min(1,((px-x1)*dx+(py-y1)*dy)/l2));m=Math.min(m,Math.hypot(px-(x1+t*dx),py-(y1+t*dy)))}return m}
 function wsAim(){ // 스킬 조준점: 수동=마우스, 자동=가장 가까운 적
  const s=state;
- if(!autoFire&&mouse.in)return{x:mouse.x,y:mouse.y,a:Math.atan2(mouse.y-s.py,mouse.x-s.px)};
+ if(!autoFire&&mouse.in)return{x:mouse.x+camX,y:mouse.y+camY,a:Math.atan2(mouse.y+camY-s.py,mouse.x+camX-s.px)};
  const t=nearestEnemy();
  return t?{x:t.x,y:t.y,a:Math.atan2(t.y-s.py,t.x-s.px)}:{x:s.px+Math.cos(s.aim)*200,y:s.py+Math.sin(s.aim)*200,a:s.aim};
 }
@@ -3231,8 +3311,8 @@ function tornadoUpdate(dt){
   t.h+=(Math.random()-.5)*dt*4; // 무작위로 방향을 틀며 돌아다님
   t.vx=Math.cos(t.h)*T.speed;t.vy=Math.sin(t.h)*T.speed;
   t.x+=t.vx*dt;t.y+=t.vy*dt;
-  if(t.x<30||t.x>W-30){t.h=Math.PI-t.h;t.x=cl(t.x,30,W-30)}
-  if(t.y<70||t.y>H-30){t.h=-t.h;t.y=cl(t.y,70,H-30)}
+  if(t.x<30||t.x>WW-30){t.h=Math.PI-t.h;t.x=cl(t.x,30,WW-30)}
+  if(t.y<70||t.y>WH-30){t.h=-t.h;t.y=cl(t.y,70,WH-30)}
   const tick=t.tk<=0;if(tick)t.tk=T.tick;
   for(const e of s.enemies){
    if(e.hp<=0)continue;
@@ -3347,10 +3427,10 @@ const WSKILL={
  pistol:{n:'섬광 수류탄',en:'FLASHBANG GRENADE',ic:'💥',cdk:'pistol',d:'조준 지점에 수류탄 투척 → 큰 폭발 + 섬광 기절(2.6초) + 파편탄 16발',
   use(s){const C=CONFIG.ws.pistol,p=wsAim();let tx=p.x,ty=p.y;
    if(autoFire){const t=meteorTargets(1,C.r)[0];if(t){tx=t.x;ty=t.y}}
-   const d=Math.hypot(tx-s.px,ty-s.py)||1,k=Math.min(1,C.range/d);tx=cl(s.px+(tx-s.px)*k,20,W-20);ty=cl(s.py+(ty-s.py)*k,62,H-20);
+   const d=Math.hypot(tx-s.px,ty-s.py)||1,k=Math.min(1,C.range/d);tx=cl(s.px+(tx-s.px)*k,20,WW-20);ty=cl(s.py+(ty-s.py)*k,62,WH-20);
    s.nades.push({x0:s.px,y0:s.py,tx,ty,x:s.px,y:s.py,h:0,t:0,T:.7});sfx('w_missile');banner('섬광 수류탄!','FLASHBANG GRENADE','#fff27a')}},
  missile:{n:'융단 폭격',en:'CARPET BOMBING',ic:'✈️',cdk:'missile',d:'맵 오른쪽에서 왼쪽으로 세로 줄 폭탄이 쓸고 지나가며 전역 폭격',
-  use(s){s.carpet={x:W+40,acc:0};sfx('w_missile');banner('융단 폭격!','CARPET BOMBING','#ff9a3d')}},
+  use(s){s.carpet={x:camX+W+40,acc:0};sfx('w_missile');banner('융단 폭격!','CARPET BOMBING','#ff9a3d')}},
  boomerang:{n:'낙뢰 강타',en:'THUNDER SLAM',ic:'🪓',cdk:'boomerang',d:'제자리 점프 후 도끼를 내려찍어 충격파 + 굵은 갈래 번개 10줄',
   use(s){const C=CONFIG.ws.boomerang;s.slam={t:0,T:C.jump};s.invuln=Math.max(s.invuln,C.jump+.5);sfx('dash');burst(s.px,s.py,'#cfe6ff',10);banner('낙뢰 강타!','THUNDER SLAM','#9fd0ff')}},
  sniper:{n:'더 월드',en:'THE WORLD',ic:'⏱️',cdk:'sniper',d:'4.5초간 시간 정지: 적·적 탄막·이벤트가 모두 멈추고 플레이어와 플레이어의 탄환만 움직일 수 있음',
@@ -3455,8 +3535,8 @@ function wskillUpdate(dt){
  const c=s.carpet;
  if(c){
   const P=C.missile;c.x-=P.speed*dt;c.acc+=dt;
-  while(c.acc>=P.cols){c.acc-=P.cols;for(let y=58+Math.random()*P.gap*.5;y<H-8;y+=P.gap)s.bombs.push({x:c.x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*12,t:.42,T:.42,r:P.r,done:false,fl:0});if(Math.random()<.5)sfx('boom')}
-  if(c.x<-50)s.carpet=null;
+  while(c.acc>=P.cols){c.acc-=P.cols;for(let y=camY+58+Math.random()*P.gap*.5;y<camY+H-8;y+=P.gap)s.bombs.push({x:c.x+(Math.random()-.5)*16,y:y+(Math.random()-.5)*12,t:.42,T:.42,r:P.r,done:false,fl:0});if(Math.random()<.5)sfx('boom')}
+  if(c.x<camX-50)s.carpet=null;
  }
  s.bombs.forEach(b=>{if(!b.done){b.t-=dt;if(b.t<=0){b.done=true;b.fl=.3;aoe(b.x,b.y,b.r,C.missile.dmg,0,true);s.fx.push({blast:true,x:b.x,y:b.y,r:b.r,c:'#ff9a3d',life:.2});burst(b.x,b.y,'#ffb347',3);s.shake=Math.max(s.shake,.05)}}else b.fl-=dt});
  s.bombs=s.bombs.filter(b=>!b.done||b.fl>0);
@@ -3466,7 +3546,7 @@ function wskillUpdate(dt){
  // 5) 질풍 일섬
  if(s.gale){
   const g=s.gale,G=C.sword,mv=G.dist/G.dur*dt;g.t+=dt;
-  s.px=cl(s.px+Math.cos(g.a)*mv,16,W-16);s.py=cl(s.py+Math.sin(g.a)*mv,TOP+7,H-16);s.invuln=Math.max(s.invuln,.2);
+  s.px=cl(s.px+Math.cos(g.a)*mv,16,WW-16);s.py=cl(s.py+Math.sin(g.a)*mv,TOP+7,WH-16);s.invuln=Math.max(s.invuln,.2);
   s.gtrail.push({x:s.px,y:s.py,a:g.a,life:.35});
   s.enemies.forEach(e=>{if(e.hp<=0||g.hit.has(e)||Math.hypot(e.x-s.px,e.y-s.py)>=e.r+44)return;g.hit.add(e);atkHit(e,G.dmg,0,true);burst(e.x,e.y,'#d8fff0',6);s.fx.push({ring:true,x:e.x,y:e.y,r:e.r*.6,life:.2});if(e.kind!=='boss'&&e.hp>0){e.x+=Math.cos(g.a+1.57)*20;e.y+=Math.sin(g.a+1.57)*20}});
   if(g.t>=g.T){s.gale=null;galeBurst()}
@@ -3523,12 +3603,12 @@ function garrowUpdate(dt){
  const tick=g.tk<=0;if(tick)g.tk=.12;
  g.carried=g.carried.filter(c=>c.e.hp>0);
  for(const c of g.carried){
-  c.e.x=cl(g.x+nx*c.off+g.dx*c.lag,4,W-4);c.e.y=cl(g.y+ny*c.off+g.dy*c.lag,50,H-4);c.e.slowTime=.2;c.e.slowFactor=0;
+  c.e.x=cl(g.x+nx*c.off+g.dx*c.lag,4,WW-4);c.e.y=cl(g.y+ny*c.off+g.dy*c.lag,50,WH-4);c.e.slowTime=.2;c.e.slowFactor=0;
   if(tick&&c.e.hp>0){atkHit(c.e,C.tick,0,true);burst(c.e.x,c.e.y,'#ffe9a0',2)}
  }
  if(Math.random()<dt*60)s.particles.push({x:g.x-g.dx*20+(Math.random()-.5)*30,y:g.y-g.dy*20+(Math.random()-.5)*30,vx:0,vy:0,life:.4,c:'#ffe9a0',size:5});
  s.shake=Math.max(s.shake,.08);
- if(g.x<-80||g.x>W+80||g.y<-80||g.y>H+80){
+ if(g.x<camX-80||g.x>camX+W+80||g.y<camY-80||g.y>camY+H+80){
   g.carried.forEach(c=>{if(c.e.hp>0){slowE(c.e,1.2,.1)}});
   s.garrow=null;
  }
@@ -3582,8 +3662,8 @@ function drawWskillAir(){
   ctx.fillStyle=Math.floor(T*20)%2?'#ffd55c':'#ff6b3d';ctx.fillRect(n.x-1,n.y-n.h-13,3,5);ctx.restore();
  });
  // 융단 폭격
- if(s.carpet){const c=s.carpet;ctx.save();const g=ctx.createLinearGradient(c.x-40,0,c.x+40,0);g.addColorStop(0,'rgba(255,90,40,0)');g.addColorStop(.5,'rgba(255,120,50,.35)');g.addColorStop(1,'rgba(255,90,40,0)');ctx.fillStyle=g;ctx.fillRect(c.x-40,48,80,H-48);
-  ctx.globalAlpha=.9;ctx.fillStyle='#cfd6e4';for(let y=70;y<H;y+=120){ctx.beginPath();ctx.moveTo(c.x+22,y);ctx.lineTo(c.x-18,y-14);ctx.lineTo(c.x-8,y);ctx.lineTo(c.x-18,y+14);ctx.closePath();ctx.fill()}ctx.restore()}
+ if(s.carpet){const c=s.carpet;ctx.save();const g=ctx.createLinearGradient(c.x-40,0,c.x+40,0);g.addColorStop(0,'rgba(255,90,40,0)');g.addColorStop(.5,'rgba(255,120,50,.35)');g.addColorStop(1,'rgba(255,90,40,0)');ctx.fillStyle=g;ctx.fillRect(c.x-40,camY+48,80,H-48);
+  ctx.globalAlpha=.9;ctx.fillStyle='#cfd6e4';for(let y=camY+70;y<camY+H;y+=120){ctx.beginPath();ctx.moveTo(c.x+22,y);ctx.lineTo(c.x-18,y-14);ctx.lineTo(c.x-8,y);ctx.lineTo(c.x-18,y+14);ctx.closePath();ctx.fill()}ctx.restore()}
  s.bombs.forEach(b=>{ctx.save();
   if(!b.done){const k=b.t/b.T;ctx.globalAlpha=.5;ctx.strokeStyle='#ff5a3a';ctx.lineWidth=2;ctx.beginPath();ctx.arc(b.x,b.y,b.r*.4*(1.2-k*.4),0,Math.PI*2);ctx.stroke();
    ctx.globalAlpha=1;ctx.fillStyle='#2a2f3a';ctx.beginPath();ctx.ellipse(b.x,b.y-k*220,4,7,0,0,Math.PI*2);ctx.fill();ctx.fillStyle='#ff7a4d';ctx.fillRect(b.x-1,b.y-k*220-11,2,4)}
@@ -3647,11 +3727,11 @@ function drawWskillOverlay(){
   ctx.save();ctx.globalCompositeOperation='saturation';ctx.globalAlpha=.92;ctx.fillStyle='#808080';ctx.fillRect(0,TOP,W,H-TOP);ctx.restore();
   ctx.save();ctx.globalAlpha=.1;ctx.fillStyle='#ffe45c';ctx.fillRect(0,TOP,W,H-TOP);ctx.restore();
   // 플레이어만 색을 유지
-  rect(s.px-10,s.py-10,20,20,'#5ae1eb');rect(s.px-6,s.py-6,12,12,'#b9ffff');rect(s.px-6,s.py-3,3,3,'#142d41');rect(s.px+3,s.py-3,3,3,'#142d41');rect(s.px-5,s.py+5,10,3,'#2d91af');
+  rect((s.px-camX)-10,(s.py-camY)-10,20,20,'#5ae1eb');rect((s.px-camX)-6,(s.py-camY)-6,12,12,'#b9ffff');rect((s.px-camX)-6,(s.py-camY)-3,3,3,'#142d41');rect((s.px-camX)+3,(s.py-camY)-3,3,3,'#142d41');rect((s.px-camX)-5,(s.py-camY)+5,10,3,'#2d91af');
   // 시계 링
-  const k=s.tstop/(s.tsMax||1);ctx.save();ctx.translate(s.px,s.py);ctx.strokeStyle='#ffe45c';ctx.lineWidth=3;ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(0,0,40,-Math.PI/2,-Math.PI/2+Math.PI*2*k);ctx.stroke();
+  const k=s.tstop/(s.tsMax||1);ctx.save();ctx.translate((s.px-camX),(s.py-camY));ctx.strokeStyle='#ffe45c';ctx.lineWidth=3;ctx.globalAlpha=.9;ctx.beginPath();ctx.arc(0,0,40,-Math.PI/2,-Math.PI/2+Math.PI*2*k);ctx.stroke();
   ctx.globalAlpha=.6;ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(T*6)*34,Math.sin(T*6)*34);ctx.stroke();ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(T*.5)*22,Math.sin(T*.5)*22);ctx.stroke();ctx.restore();
-  text('⏱ '+s.tstop.toFixed(1)+'s',s.px,s.py-52,'#ffe45c',14,'center');
+  text('⏱ '+s.tstop.toFixed(1)+'s',(s.px-camX),(s.py-camY)-52,'#ffe45c',14,'center');
  }
  if(s.tsFlash>0){ctx.save();ctx.globalAlpha=Math.min(.8,s.tsFlash);ctx.fillStyle=s.tstop>0?'#fffbe0':'#ffffff';ctx.fillRect(0,TOP,W,H-TOP);ctx.restore()}
  if(s.flash>0){ctx.save();ctx.globalAlpha=Math.min(.85,s.flash*2.2);ctx.fillStyle='#ffffff';ctx.fillRect(0,TOP,W,H-TOP);ctx.restore()}
@@ -3750,8 +3830,8 @@ const mul=(s.dashTime>0?3.1:1)*(s.dig?1.9:1)*(inPuddle()?CONFIG.events.puddleSlo
    if(s.frozen>0){vx=0;vy=0;s.ivx=0;s.ivy=0} // 빙결: 이동 불가
   if(inIce()){const k=Math.min(1,dt*1.6);s.ivx+=(vx-s.ivx)*k;s.ivy+=(vy-s.ivy)*k;vx=s.ivx;vy=s.ivy} // 빙판: 관성으로 미끄러짐
   else{s.ivx=vx;s.ivy=vy}
-  s.px=Math.max(16,Math.min(W-16,s.px+vx*dt));
-  s.py=Math.max(TOP+7,Math.min(H-16,s.py+vy*dt));
+  s.px=Math.max(16,Math.min(WW-16,s.px+vx*dt));
+  s.py=Math.max(TOP+7,Math.min(WH-16,s.py+vy*dt));
  }
 
  s.spawn+=wdt;
@@ -3764,7 +3844,7 @@ const mul=(s.dashTime>0?3.1:1)*(s.dig?1.9:1)*(inPuddle()?CONFIG.events.puddleSlo
   if(late>0){const ex=Math.min(2,1+(late/150|0));for(let i=0;i<ex;i++)if(Math.random()<.5)spawn()}
  }
 
- updateAim();
+ updateCam();updateAim();
  if(s.weapon==='pistol'&&now-s.lastshot>=s.rate*1000){if(shoot())s.lastshot=now}
 
  s.noAtk=!!(s.dig||s.bowSk);s.noFlick=(s.slam||s.gale||s.hmg>0||s.bstorm||s.bowSk)?1:0;
@@ -3792,13 +3872,20 @@ const mul=(s.dashTime>0?3.1:1)*(s.dig?1.9:1)*(inPuddle()?CONFIG.events.puddleSlo
    hurtPlayer(b.dmg||(CONFIG.boss.ringDmg+(s.bossCount-1)*2));
    s.invuln=.4;b.life=0;b.split=0;burst(s.px,s.py,'#ff6b6b',6);
   }
-  if(b.x<-20||b.x>W+20||b.y<-20||b.y>H+20)b.life=0;
+  if(b.x<camX-20||b.x>camX+W+20||b.y<camY-20||b.y>camY+H+20)b.life=0;
  });
  if(s.hasWalls)for(const b of s.eb)if(b.life>0&&inWall(b.x,b.y,3)){b.life=0;b.split=0;burst(b.x,b.y,'#c9b79a',3)} // 벽이 적 탄환을 막는다
  s.eb=s.eb.filter(b=>b.life>0);
  if(s.orbs)s.orbAngle+=orbStats(s.orbLevel).speed*wdt;
  const O=s.orbs?orbStats(s.orbLevel):null;
 
+  if(BIG){ // 큰 맵: 플레이어에게서 너무 멀어진 적은 화면 바로 바깥으로 다시 배치 (뱀서식)
+   for(const e of s.enemies){
+    if(e.hp<=0||e.kind==='boss'||e.pull&&e.pull.t>0)continue;
+    if(s.boss&&s.boss.guards&&s.boss.guards.includes(e))continue;
+    if(Math.hypot(e.x-s.px,e.y-s.py)>BIGMAP.recycle){const p=spawnPos();e.x=p.x;e.y=p.y;e.nt=undefined}
+   }
+  }
  s.enemies.forEach(e=>{
   const ex=s.px-e.x,ey=s.py-e.y,d=Math.hypot(ex,ey)||1;
   e.slowTime=Math.max(0,(e.slowTime||0)-wdt);
@@ -3827,7 +3914,7 @@ const mul=(s.dashTime>0?3.1:1)*(s.dig?1.9:1)*(inPuddle()?CONFIG.events.puddleSlo
    if(e.tp<=0){
     e.tp=3+Math.random()*1.5;const a=Math.random()*Math.PI*2;
     burst(e.x,e.y,e.c,6);
-    e.x=Math.max(20,Math.min(W-20,s.px+Math.cos(a)*140));e.y=Math.max(60,Math.min(H-20,s.py+Math.sin(a)*140));
+    e.x=Math.max(20,Math.min(WW-20,s.px+Math.cos(a)*140));e.y=Math.max(60,Math.min(WH-20,s.py+Math.sin(a)*140));
     burst(e.x,e.y,e.c,8);
    }
   }else if(e.kind==='healer'){
@@ -3854,7 +3941,7 @@ const mul=(s.dashTime>0?3.1:1)*(s.dig?1.9:1)*(inPuddle()?CONFIG.events.puddleSlo
   const fs=stillField();
   e.x+=mx*sp*slow*fs*wdt;
   e.y+=my*sp*slow*fs*wdt;
-  if(e.btype==='summoner'||e.btype==='final'){e.x=Math.max(40,Math.min(W-40,e.x));e.y=Math.max(70,Math.min(H-40,e.y))}
+  if(e.btype==='summoner'||e.btype==='final'){e.x=Math.max(40,Math.min(WW-40,e.x));e.y=Math.max(70,Math.min(WH-40,e.y))}
   e.hit=Math.max(0,e.hit-wdt);
   if(e.pull&&e.pull.t>0){ // 지뢰 흡인
    e.pull.t-=wdt;const q=Math.min(1,wdt*12)*e.pull.k;
@@ -3951,7 +4038,9 @@ function draw(){
  ctx.fillStyle='#111623';ctx.fillRect(0,0,W,H);
  ctx.save();
  if(s.shake>0&&SET.shake)ctx.translate((Math.random()-.5)*s.shake*40,(Math.random()-.5)*s.shake*40);
- if(s.mapCv)ctx.drawImage(s.mapCv,0,0); // 맵 바닥·벽 (미리 그려 둔 이미지)
+ updateCam();ctx.save();ctx.translate(-camX,-camY); // 카메라: 월드 그리기 시작 (큰 맵에서만 camX/camY≠0)
+ if(s.big)drawBigGround(s); // 큰 맵 바닥·장식·경계
+ else if(s.mapCv)ctx.drawImage(s.mapCv,0,0); // 맵 바닥·벽 (미리 그려 둔 이미지)
  drawMapLow(s); // 용암·다리·얼음 반짝임·꽃
 
 
@@ -3965,7 +4054,7 @@ function draw(){
     ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.stroke();
    }else{
     ctx.globalAlpha=Math.min(1,z.life*5);ctx.fillStyle='#fff7a8';ctx.beginPath();ctx.arc(z.x,z.y,z.r,0,Math.PI*2);ctx.fill();
-    ctx.strokeStyle='#ffffff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(z.x,TOP);ctx.lineTo(z.x+16,TOP+(z.y-TOP)*.35);ctx.lineTo(z.x-12,TOP+(z.y-TOP)*.65);ctx.lineTo(z.x,z.y);ctx.stroke();
+    ctx.strokeStyle='#ffffff';ctx.lineWidth=6;ctx.beginPath();ctx.moveTo(z.x,camY+TOP);ctx.lineTo(z.x+16,camY+TOP+(z.y-camY-TOP)*.35);ctx.lineTo(z.x-12,camY+TOP+(z.y-camY-TOP)*.65);ctx.lineTo(z.x,z.y);ctx.stroke();
    }
   }else if(z.type==='puddle'){
    drawPuddleZone(ctx,z);
@@ -4240,7 +4329,7 @@ function draw(){
  s.frosts=s.frosts.filter(f=>s.time-f.t0<f.life);
  s.frosts.forEach(f=>{
   const p=(s.time-f.t0)/f.life,ex=1-Math.pow(1-Math.min(1,p*2.4),3),R=Math.max(4,f.r*ex),fade=1-p;
-  if(f.big&&p<.16){ctx.save();ctx.globalAlpha=(.16-p)/.16*.22;ctx.fillStyle='#bff6ff';ctx.fillRect(-40,-40,W+80,H+80);ctx.restore()}
+  if(f.big&&p<.16){ctx.save();ctx.globalAlpha=(.16-p)/.16*.22;ctx.fillStyle='#bff6ff';ctx.fillRect(camX-40,camY-40,W+80,H+80);ctx.restore()}
   ctx.save();ctx.translate(f.x,f.y);
   const g=ctx.createRadialGradient(0,0,R*.1,0,0,R);
   g.addColorStop(0,'rgba(215,252,255,'+(.12*fade)+')');g.addColorStop(.7,'rgba(110,222,255,'+(.3*fade)+')');g.addColorStop(1,'rgba(200,252,255,'+Math.min(1,.55*fade+.1)+')');
@@ -4274,7 +4363,7 @@ function draw(){
  if(s.dig)drawDigHump();
  else{
   if(s.invuln<=0||s.noFlick||Math.floor(performance.now()/55)%2===0){
-   rect(s.px-10,s.py-10,20,20,'#5ae1eb');rect(s.px-6,s.py-6,12,12,'#b9ffff');
+   rect((s.px-camX)-10,(s.py-camY)-10,20,20,'#5ae1eb');rect((s.px-camX)-6,(s.py-camY)-6,12,12,'#b9ffff');
    rect(s.px-6,s.py-3,3,3,'#142d41');rect(s.px+3,s.py-3,3,3,'#142d41');rect(s.px-5,s.py+5,10,3,'#2d91af');
   }
   drawHeld();drawWeaponHud();drawWskillPlayerFx();
@@ -4299,6 +4388,7 @@ function draw(){
   ctx.fillStyle='#ff2a45';ctx.beginPath();ctx.arc(b.x,b.y,6+(b.r||0),0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#ffe066';ctx.beginPath();ctx.arc(b.x,b.y,2.8+(b.r||0)*.45,0,Math.PI*2);ctx.fill();ctx.restore();
  });
+ ctx.restore(); // 카메라 끝 (이후는 화면 고정 연출)
  if(s.blood>0){ctx.save();ctx.globalAlpha=Math.min(.14,s.blood/2)+.04*Math.sin(performance.now()/300);ctx.fillStyle='#b0102a';ctx.fillRect(0,TOP,W,H-TOP);ctx.restore()}
  if(s.map==='ice'){ // 얼음 맵: 눈보라 시야 제한(플레이어·모닥불 주변만 밝게) + 모닥불 + 눈보라
   const fa=s.bliz>0?Math.max(0,Math.min(1,s.bliz/1.5,(s.blizMax-s.bliz)/1.5)):0,Tm=performance.now()/1000;
@@ -4308,12 +4398,12 @@ function draw(){
  }
  if(s.dark>0){
   const a=Math.max(0,Math.min(1,s.dark,CONFIG.events.darkTime-s.dark)),R=CONFIG.events.darkRadius;
-  const g=ctx.createRadialGradient(s.px,s.py,R*.5,s.px,s.py,R);
+  const g=ctx.createRadialGradient(s.px-camX,s.py-camY,R*.5,s.px-camX,s.py-camY,R);
   g.addColorStop(0,'rgba(5,8,16,0)');g.addColorStop(1,`rgba(5,8,16,${.95*a})`);
   ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
  }
  if(!autoFire&&s.weapon!=='missile'&&mouse.in&&!s.paused&&!s.choose){
-  ctx.save();ctx.globalAlpha=.16;ctx.strokeStyle='#ffffff';ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(s.px,s.py);ctx.lineTo(mouse.x,mouse.y);ctx.stroke();ctx.setLineDash([]);
+  ctx.save();ctx.globalAlpha=.16;ctx.strokeStyle='#ffffff';ctx.setLineDash([6,8]);ctx.beginPath();ctx.moveTo(s.px-camX,s.py-camY);ctx.lineTo(mouse.x,mouse.y);ctx.stroke();ctx.setLineDash([]);
   ctx.globalAlpha=mouse.down?1:.75;ctx.strokeStyle=mouse.down?'#ff6b6b':'#ffffff';ctx.lineWidth=2;
   ctx.beginPath();ctx.arc(mouse.x,mouse.y,9,0,Math.PI*2);ctx.moveTo(mouse.x-14,mouse.y);ctx.lineTo(mouse.x-5,mouse.y);ctx.moveTo(mouse.x+5,mouse.y);ctx.lineTo(mouse.x+14,mouse.y);ctx.moveTo(mouse.x,mouse.y-14);ctx.lineTo(mouse.x,mouse.y-5);ctx.moveTo(mouse.x,mouse.y+5);ctx.lineTo(mouse.x,mouse.y+14);ctx.stroke();ctx.restore();
  }
