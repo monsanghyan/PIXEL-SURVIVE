@@ -1803,7 +1803,7 @@ const MAP_INFO={
 // =====================================================================
 // [신규] 큰 맵 시스템: 플레이어 중앙 고정 카메라 + 화면 밖 가까운 곳에서 적 소환 (뱀파이어 서바이벌 방식)
 // =====================================================================
-const BIGMAP={w:4800,h:3200,pad:70,recycle:1150,decor:340}; // 월드 크기 / 스폰 거리(화면 가장자리 바깥) / 이 거리보다 멀어진 적은 재배치 / 장식 개수
+const BIGMAP={w:7200,h:4800,pad:70,recycle:1150,decor:765}; // 월드 크기 / 스폰 거리(화면 가장자리 바깥) / 이 거리보다 멀어진 적은 재배치 / 장식 개수
 function updateCam(){const s=state;if(BIG&&s){camX=s.px-W/2;camY=s.py-(TOP+H)/2}else{camX=0;camY=0}} // 플레이어를 화면(HUD 아래 영역) 중앙에 둔다
 function spawnPos(){ // 화면 바로 바깥 직사각형 테두리에서, 월드 안쪽인 좌표를 고른다
  if(state.sky)return SKYMAP.spawnPos(state); // 하늘섬: 걸을 수 있는 땅에서만 소환
@@ -2830,7 +2830,7 @@ const WK={parth:1.4,village:1.25,devil:1.4}; // 구조물별 크기 배율
 function wildProps(s,R){ // setupMap('wild')에서 호출
  const G=s.bigGround,props=[],late=[],anim=[],temples=[],keep=[],rocks=[];Object.assign(G,{props,late,anim,temples,keep});s.hasWalls=true;
  const J=(v,a)=>v+(R()-.5)*a,seed=()=>(R()*1e6)|0,wall=(x,y,w,h)=>s.walls.push({x:Math.round(x),y:Math.round(y),w:Math.round(w),h:Math.round(h),k:'sand',seed:0});
- {const K=WK.parth,M=PARTH.M,PW=PARTH.W,PH=PARTH.H,px0=Math.round(J(1800,360)-PW*K/2),py0=TOP+260; // (1) 북쪽: 파르테논풍 폐허 신전
+ {const K=WK.parth,M=PARTH.M,PW=PARTH.W,PH=PARTH.H,px0=Math.round(J(WW*.34,520)-PW*K/2),py0=TOP+260; // (1) 북쪽: 파르테논풍 폐허 신전
   const P=bakeParthenon(seed(),K);
   props.push({cv:P.cv,x:px0-Math.round(M*K),y:py0-Math.round(M*K)});
   P.walls.forEach(q=>wall(px0+q.x*K,py0+q.y*K,q.w*K,q.h*K));
@@ -2838,7 +2838,7 @@ function wildProps(s,R){ // setupMap('wild')에서 호출
   P.beams.forEach(q=>{const X=px0+q.x*K,Y=py0+q.y*K;late.push({cv:bakeBeam(q.len,q.seed,K),x:Math.round(X-22*K),y:Math.round(Y-148*K),bx:X-22*K,by:Y-148*K,bw:q.len*K,bh:24*K,a:1,min:.5})});
   const ccx=px0+PW*K/2,ccy=py0+PH*K/2;anim.push({k:'circle',x:ccx,y:ccy,r:100*K,col:'140,226,255',ph:0});
   temples.push({x:ccx,y:ccy,r:100*K});keep.push({x:px0-100*K,y:py0-170*K,w:(PW+200)*K,h:(PH+280)*K});}
- {const K=WK.village,V=bakeVillage(seed(),K),vx=Math.round(WW-V.VW*K-340),vy=Math.round(J(1250,150)); // (2) 동쪽: 폐허가 된 서부 마을 (건물 9채) - 동쪽 끝에서 340px 안쪽
+ {const K=WK.village,V=bakeVillage(seed(),K),vx=Math.round(WW-V.VW*K-340),vy=Math.round(J(WH*.42,260)); // (2) 동쪽: 폐허가 된 서부 마을 (건물 9채) - 동쪽 끝에서 340px 안쪽
   props.push({cv:V.cv,x:vx,y:vy});G.well={x:vx+V.well.x*K,y:vy+V.well.y*K};
   V.walls.forEach(q=>wall(vx+q.x*K,vy+q.y*K,q.w*K,q.h*K));
   V.late.forEach(q=>late.push({cv:q.cv,x:Math.round(vx+q.x*K),y:Math.round(vy+q.y*K),bx:vx+q.body.x*K,by:vy+q.body.y*K,bw:q.body.w*K,bh:q.body.h*K,a:1,min:.4,
@@ -2846,7 +2846,7 @@ function wildProps(s,R){ // setupMap('wild')에서 호출
   const barn=V.bld.find(b=>b.kind==='barn');anim.push({k:'glow',x:vx+(barn.x+barn.w/2)*K,y:vy+(barn.y+10)*K,r:210*K,ph:2});
   anim.push({k:'circle',x:vx+V.circle.x*K,y:vy+V.circle.y*K,r:V.circle.r*K,col:'255,160,70',ph:1.7});
   temples.push({x:vx+V.circle.x*K,y:vy+V.circle.y*K,r:V.circle.r*K});keep.push({x:vx-40,y:vy+10,w:V.VW*K+80,h:V.VH*K+40});}
- {const K=WK.devil,cx=Math.round(J(700,80)),cy=Math.round(J(WH-470,40)),site=bakeDevilSite(seed(),K); // (3) 남서쪽 끝: 악마의 손바닥 (뾰족한 바위들)
+ {const K=WK.devil,cx=Math.round(J(WW*.14,120)),cy=Math.round(J(WH-470,40)),site=bakeDevilSite(seed(),K); // (3) 남서쪽 끝: 악마의 손바닥 (뾰족한 바위들)
   props.push({cv:site,x:Math.round(cx-390*K),y:Math.round(cy-300*K)});
   DSPIRES.map(sp=>({sp,bkd:bakeSpire(sp.w,sp.h,sp.lean,sp.hook,seed(),K)})).sort((p,q)=>p.sp.y-q.sp.y).forEach(({sp,bkd})=>{
    const X=cx+sp.x*K,Y=cy+sp.y*K;late.push({cv:bkd.cv,x:Math.round(X-bkd.bx),y:Math.round(Y-bkd.by),bx:X+sp.lean*.35*K-sp.w*.3*K,by:Y-sp.h*.95*K,bw:sp.w*.6*K,bh:(sp.h*.95-4)*K,a:1,min:.45});
@@ -2854,7 +2854,7 @@ function wildProps(s,R){ // setupMap('wild')에서 호출
   });
   anim.push({k:'circle',x:cx,y:cy+8*K,r:90*K,col:'238,178,255',ph:3.3});
   temples.push({x:cx,y:cy+8*K,r:90*K});keep.push({x:cx-410*K,y:cy-310*K,w:820*K,h:580*K});}
- for(let n=0,tries=0;n<14&&tries++<900;){ // 큰 바위 14개 (시작 지점·구조물 주변·가장자리는 피하고 서로 멀리 떨어뜨림)
+ for(let n=0,tries=0;n<20&&tries++<1500;){ // 큰 바위 20개 (시작 지점·구조물 주변·가장자리는 피하고 서로 멀리 떨어뜨림)
   const w=44+(R()*52|0),h=34+(R()*32|0),x=(120+R()*(WW-240-w))|0,y=(TOP+120+R()*(WH-TOP-240-h))|0;
   if(Math.hypot(x+w/2-WW/2,y+h/2-(TOP+WH)/2)<300)continue;
   if(keep.some(a=>x<a.x+a.w+40&&x+w>a.x-40&&y<a.y+a.h+40&&y+h>a.y-40))continue;
@@ -2872,8 +2872,8 @@ function wildProps(s,R){ // setupMap('wild')에서 호출
 // =====================================================================
 const WEV={dayLen:60,fade:3,nightLen:4,heatRate:1.7,oasisR:105,oasisRecover:9,wellR:95,wellFill:3,wellCd:25,bottleHeal:25,bottleMax:5,
  sandLen:26,sandBase:.82,sandWind:.33,
- sbrLen:70,sbrAfter:20,sbrExt:10,sbrFill:4.5,
- chestMax:5,chestEvery:17};
+ sbrAfter:20,sbrExt:10,sbrFill:4.5,sbrPath:1.18,sbrSlack:2,
+ chestMax:7,chestEvery:17};
 const HEAT_TIERS=[[100,25],[90,5],[75,1],[50,.2]]; // [게이지 % 이상, 초당 체력 감소]
 const SBR_T={bullet:{name:'하늘빛 탄',col:'120,225,255',hex:'#7fe9ff'},dino:{name:'공룡화',col:'110,230,120',hex:'#6fe678'},stand:{name:'스탠드',col:'205,120,255',hex:'#cd78ff'}};
 
@@ -2902,9 +2902,9 @@ function wevPickOasis(s,n){ // 낮에 생길 오아시스 자리를 미리 정�
  return out;
 }
 function wevInit(s){
- s.wev={dayAt:70+Math.random()*90,dayState:0,day:0,dayK:0,night:0,heat:0,oasis:[],plan:[],known:false,items:[],bottleT:8,chestT:7,wellP:0,wellCd:0,
+ s.wev={dayAt:70+Math.random()*90,dayState:0,day:0,dayK:0,night:0,heat:0,oasis:[],plan:[],known:false,items:[],bottleT:22,chestT:7,wellP:0,wellCd:0,
   sand:0,sandMax:1,sandK:0,wind:{a:0,x:1,y:0},sandPart:[],magnetT:0,fin:false,
-  sbr:{on:false,t:0,corpses:[],after:0,pw:{bullet:false,dino:false,stand:false},shots:[],stand:null,rings:[],fireCd:0,biteCd:0},hazeCv:null,sandCv:null};
+  sbr:{on:false,t:0,tMax:1,afterMax:20,corpses:[],after:0,pw:{bullet:false,dino:false,stand:false},shots:[],stand:null,rings:[],fireCd:0,biteCd:0},hazeCv:null,sandCv:null};
  s.wev.plan=wevPickOasis(s,2);
 }
 const wevPw=()=>{const V=state.wev;return V?V.sbr.pw:null};
@@ -2970,18 +2970,27 @@ function wevSandUpdate(wdt){
 }
 
 // ---------- 스틸볼런 ----------
+ // 제한 시간 = (플레이어 → 첫 유해 → 둘째 유해) 이동 거리를 최대 속도로 가는 시간 + 유해 2개 차지 시간 (가장 짧은 순서 기준, 우회 여유 포함)
+function wevSbrDuration(s,cs){
+ const spd=s.speed,fill=WEV.sbrFill;let best=1e9;
+ for(let i=0;i<cs.length;i++)for(let j=0;j<cs.length;j++){if(i===j)continue;
+  const a=cs[i],b=cs[j],d0=Math.max(0,Math.hypot(s.px-a.x,s.py-a.y)-a.r*.9),d1=Math.max(0,Math.hypot(a.x-b.x,a.y-b.y)-a.r*.9-b.r*.9);
+  best=Math.min(best,((d0+d1)*WEV.sbrPath)/spd+fill*2);}
+ return Math.max(25,Math.min(160,best+WEV.sbrSlack));
+}
 function wevStartSbr(){
  const s=state,V=s.wev,S=V&&V.sbr,G=s.bigGround;
  if(!V||S.on||S.after>0||s.time<60||s.time>CONFIG.final.time-110||!G||!G.temples||G.temples.length<3)return false;
  const types=['bullet','dino','stand'].sort(()=>Math.random()-.5);
- S.on=true;S.t=WEV.sbrLen;S.after=0;S.pw={bullet:false,dino:false,stand:false};S.shots=[];S.stand=null;S.rings=[];S.fireCd=0;S.biteCd=0;
+ S.on=true;S.after=0;S.afterMax=WEV.sbrAfter;S.pw={bullet:false,dino:false,stand:false};S.shots=[];S.stand=null;S.rings=[];S.fireCd=0;S.biteCd=0;
  S.corpses=G.temples.slice(0,3).map((t,i)=>({x:t.x,y:t.y,r:t.r||110,type:types[i],p:0,got:false}));
- banner('⚰️ 스틸볼런','마법진 위의 유해를 차지하세요! 놓친 유해는 적이 가져갑니다','#d08cff');say('스틸볼런! 마법진에 머물러 유해를 얻으세요');
+ S.t=S.tMax=wevSbrDuration(s,S.corpses);
+ banner('⚰️ 스틸볼런','제한 시간 '+Math.round(S.t)+'초 — 마법진 위의 유해를 차지하세요! 놓친 유해는 적이 가져갑니다','#d08cff');say('스틸볼런! 최대한 빨리 이동해 유해를 얻으세요 ('+Math.round(S.t)+'초)');
  return true;
 }
 function wevSbrEnd(){
  const s=state,S=s.wev.sbr;
- S.on=false;S.after=WEV.sbrAfter;
+ S.on=false;S.after=S.afterMax=WEV.sbrAfter;
  let lost=0;
  for(const c of S.corpses)if(!c.got){s.enemies.push(wevMkSbr(c.type,c.x,c.y));burst(c.x,c.y,SBR_T[c.type].hex,26);lost++}
  S.corpses=[];
@@ -2990,7 +2999,7 @@ function wevSbrEnd(){
 }
 function wevSbrKill(e){ // 특수 적 처치: 유해의 힘 +10초
  const S=state.wev&&state.wev.sbr;if(!S)return;
- if(S.after>0){S.after+=WEV.sbrExt;say('유해의 힘 +'+WEV.sbrExt+'초')}
+ if(S.after>0){S.after+=WEV.sbrExt;S.afterMax=Math.max(S.afterMax,S.after);say('유해의 힘 +'+WEV.sbrExt+'초')}
  burst(e.x,e.y,e.c,26);
 }
 function wevMkSbr(type,x,y){ // 유해의 능력을 쓰는 적: 체력·방어력이 높고 큼. 능력은 플레이어 것보다 약하게 조정
@@ -3088,7 +3097,7 @@ function wevChestBreak(e){ // 상자가 부서지면 자석 / 고기 / 오아시
 function wevItemUpdate(wdt){
  const s=state,V=s.wev;
  V.bottleT-=wdt;V.chestT-=wdt;
- if(V.bottleT<=0){V.bottleT=13+Math.random()*10;if(V.items.filter(i=>i.type==='bottle').length<WEV.bottleMax){const p=wevRandPos(s,true);V.items.push({type:'bottle',x:p.x,y:p.y,t:0,life:1e9})}}
+ if(V.bottleT<=0){V.bottleT=24+Math.random()*18;if(V.items.filter(i=>i.type==='bottle').length<WEV.bottleMax){const p=wevRandPos(s,true);V.items.push({type:'bottle',x:p.x,y:p.y,t:0,life:1e9})}}
  if(V.chestT<=0){V.chestT=WEV.chestEvery*(.8+Math.random()*.5);
   if(s.enemies.filter(e=>e.chest&&e.hp>0).length<WEV.chestMax&&!s.finalStage){const p=wevRandPos(s,true),hp=60*(1+s.time/300);s.enemies.push({x:p.x,y:p.y,hp,maxhp:hp,speed:0,dmg:0,c:'#c9a063',xp:0,r:15,kind:'chest',chest:true,hit:0,def:1})}}
  for(const it of V.items){
@@ -3301,21 +3310,30 @@ function wevDrawScreen(s){
    c.globalAlpha=(.18+.22*(p.v-.7))*k;c.strokeStyle=p.l>30?'#fff2cf':'#e0b46a';c.lineWidth=1.6+p.v;c.beginPath();c.moveTo(p.x,p.y);c.lineTo(p.x-V.wind.x*p.l,p.y-V.wind.y*p.l);c.stroke()}
   c.restore();
   // 바람 방향 표시
-  const ax=W/2,ay=TOP+54,L=26;c.save();c.globalAlpha=Math.min(1,k);c.translate(ax,ay);c.fillStyle='rgba(30,20,8,.55)';c.fillRect(-70,-16,140,32);
+  const ax=W/2-220,ay=TOP+30,L=26;c.save();c.globalAlpha=Math.min(1,k);c.translate(ax,ay);c.fillStyle='rgba(30,20,8,.55)';c.fillRect(-70,-16,140,32);
   c.rotate(V.wind.a);c.strokeStyle='#ffe3a8';c.fillStyle='#ffe3a8';c.lineWidth=4;c.beginPath();c.moveTo(-L,0);c.lineTo(L-6,0);c.stroke();c.beginPath();c.moveTo(L+6,0);c.lineTo(L-8,-9);c.lineTo(L-8,9);c.closePath();c.fill();c.restore();
-  text('바람',W/2-56,TOP+60,'#ffe3a8',13,'center');
+  text('바람',W/2-276,TOP+36,'#ffe3a8',13,'center');
  }
  // 이름표 (건물·기둥에 가려지지 않게 화면 층에 그림)
  const wl=s.bigGround&&s.bigGround.well;
  if(V.dayState===1&&wl){const sx=wl.x-camX,sy=wl.y-camY-WEV.wellR-10;if(sx>-90&&sx<W+90&&sy>TOP&&sy<H+20)text(V.wellCd>0?Math.ceil(V.wellCd)+'s':(V.wellP>0?'물을 길어 올리는 중…':'우물'),sx,sy,V.wellCd>0?'#aab4be':'#8fe3ff',13,'center')}
  for(const k of V.sbr.corpses){if(k.got)continue;const sx=k.x-camX,sy=k.y-camY-k.r-12;if(sx>-120&&sx<W+120&&sy>TOP&&sy<H+20)text('유해 · '+SBR_T[k.type].name+(k.p>0?'  '+Math.floor(k.p*100)+'%':''),sx,sy,SBR_T[k.type].hex,14,'center')}
- // 상태 표시 (위쪽 가운데)
- let y=TOP+16;const line=(t,col)=>{text(t,W/2,y,col,15,'center');y+=20};
- if(V.dayState===1)line('☀ 낮 '+Math.ceil(V.day)+'s',V.heat>=90?'#ff7a5a':'#ffd36b');
- if(V.sand>0)line('🌪 모래폭풍 '+Math.ceil(V.sand)+'s','#e0b46a');
+ // 상태 표시 (위쪽 가운데): 이벤트 남은 시간 + 시간 바 / 얻은 능력별 남은 시간
+ let y=TOP+16;
+ const line=(t,col)=>{text(t,W/2,y,col,15,'center');y+=20};
+ const bar=(frac,col,w,h)=>{c.save();c.fillStyle='rgba(12,8,24,.72)';c.fillRect(W/2-w/2-2,y-2,w+4,h+4);c.fillStyle='rgba(255,255,255,.12)';c.fillRect(W/2-w/2,y,w,h);c.fillStyle=col;c.fillRect(W/2-w/2,y,w*Math.max(0,Math.min(1,frac)),h);c.restore();y+=h+7};
+ if(V.dayState===1){line('☀ 낮 '+Math.ceil(V.day)+'s',V.heat>=90?'#ff7a5a':'#ffd36b');bar(V.day/WEV.dayLen,'#ffd36b',200,5)}
+ if(V.sand>0){line('🌪 모래폭풍 '+Math.ceil(V.sand)+'s','#e0b46a');bar(V.sand/V.sandMax,'#e0b46a',200,5)}
  const S=V.sbr;
- if(S.on)line('⚰ 스틸볼런 '+Math.ceil(S.t)+'s  (유해 '+S.corpses.filter(k=>k.got).length+'/'+S.corpses.length+')','#d08cff');
- else if(S.after>0)line('⚰ 유해의 힘 '+Math.ceil(S.after)+'s','#d08cff');
+ if(S.on){line('⚰ 스틸볼런 '+Math.ceil(S.t)+'s  ·  유해 '+S.corpses.filter(k=>k.got).length+'/'+S.corpses.length,'#d08cff');bar(S.t/S.tMax,S.t<10&&Math.floor(T*4)%2?'#ff7aa8':'#d08cff',240,7)}
+ else if(S.after>0)line('⚰ 유해의 힘 지속','#d08cff');
+ if(S.on||S.after>0){ // 얻은 능력별 남은 시간 (이벤트 종료 후 +'+WEV.sbrAfter+'초까지 유지)
+  const left=S.on?S.t+WEV.sbrAfter:S.after,frac=S.on?left/(S.tMax+WEV.sbrAfter):left/Math.max(S.afterMax,1);
+  for(const k of['bullet','dino','stand'])if(S.pw[k]){const Tn=SBR_T[k];
+   c.save();c.fillStyle=Tn.hex;c.fillRect(W/2-120,y+1,9,9);c.restore();
+   text(Tn.name+'  '+Math.ceil(left)+'s',W/2-100,y+10,Tn.hex,13,'left');
+   c.save();c.fillStyle='rgba(12,8,24,.72)';c.fillRect(W/2+20,y+1,100,9);c.fillStyle='rgba(255,255,255,.12)';c.fillRect(W/2+21,y+2,98,7);c.fillStyle=Tn.hex;c.fillRect(W/2+21,y+2,98*Math.max(0,Math.min(1,frac)),7);c.restore();y+=16}
+ }
  // 더위 게이지 (플레이어 머리 위)
  if(V.dayState===1){
   const px=s.px-camX,py=s.py-camY-34,bw=64,pct=V.heat/100,col=V.heat>=90?'#ff3a2a':V.heat>=75?'#ff7a2a':V.heat>=50?'#ffb83a':'#ffe27a';
@@ -4192,7 +4210,7 @@ const MAP_DEX=()=>{
   {id:'grass',group:G0,name:'초원 맵',sub:'GRASSLAND',emoji:'🌿',bg:'#13211a',col:'#7dffb0',desc:'바위 벽이 곳곳에 서 있는 넓은 평원. 가끔 무작위 위치에 꽃이 피어나며 색마다 전혀 다른 효과를 낸다. 이곳에서는 특수 이벤트가 번개 폭풍·블러드 문·암전만 일어난다.',rows:[['벽','바위 (이동·적 탄환 차단)'],['고유 요소','꽃 6종'],['특수 이벤트','번개 폭풍 · 블러드 문 · 암전']]},
   {id:'ice',group:G0,name:'얼음 맵',sub:'FROZEN FIELD',emoji:'❄️',bg:'#0f1a2b',col:'#9fe0ff',desc:'길게 휘어진 얼음 벽이 여러 가닥 놓인 설원. 벽이 끊어진 곳이 곧 길이며, 길 폭은 보스도 지나갈 만큼 넓다. 막다른 길이 없고, 빈 공간은 얼음 바닥과 모닥불로 채워져 있다. 눈보라가 오면 모닥불로 피하지 않으면 얼어붙는다.',rows:[['벽','긴 곡선 얼음 벽 10가닥 (이동·적 탄환 차단)'],['고유 요소','얼음 바닥 3곳 · 모닥불 3곳'],['특수 이벤트','블러드 문 · 눈보라 · 물웅덩이 · 빙판']]},
   {id:'fire',group:G0,name:'화염 맵',sub:'VOLCANO',emoji:'🔥',bg:'#1a1013',col:'#ff9a3d',desc:'흑요석·흑암·현무암 벽이 솟은 화산 지대. 중앙을 용암 강이 가로지르며, 적은 용암을 피해 다리 4개로만 건너온다. 플레이어는 용암을 그냥 지나갈 수 있지만 큰 피해를 입는다. 특수 이벤트는 화염·적 메테오·블러드 문만 일어난다.',rows:[['벽','흑요석 · 흑암 · 현무암 (이동·적 탄환 차단)'],['고유 요소','중앙 용암 강 · 다리 4개'],['특수 이벤트','화염 · 적 메테오 · 블러드 문']]},
-   {id:'wild',group:G0,name:'황야 맵 (큰 맵)',sub:'WILDERNESS',emoji:'🌾',bg:'#1d2316',col:'#e6d37a',desc:'화면 몇 배 크기의 넓은 맵. 카메라가 플레이어를 중앙에 두고 따라다니며, 적은 화면 바로 바깥에서 나타나 플레이어를 쫓아온다. 플레이어에게서 너무 멀어진 적은 다시 가까운 화면 밖으로 재배치된다. 곳곳에 큰 바위가 놓여 있고, 맵 가장자리에는 지붕 없는 파르테논풍 폐허 신전, 건물 9채 중 부서진 건물과 불타는 건물이 있는 폐허 서부 마을, 보랏빛 밤하늘 아래 뾰족한 바위들이 솟은 「악마의 손바닥」이 남서쪽 끝에 자리한다. 각각 바닥에 마법진이 새겨져 있다. 특수 이벤트는 낮·밤(더위), 스틸볼런, 모래폭풍, 블러드 문이 일어나며, 맵 곳곳의 상자를 부수면 아이템이 나온다.',rows:[['맵 크기',BIGMAP.w+' × '+BIGMAP.h+'px (화면의 약 '+(BIGMAP.w/W).toFixed(1)+'배 × '+(BIGMAP.h/H).toFixed(1)+'배)'],['시점','플레이어 중앙 고정 카메라 · 우상단 미니맵'],['적 소환','화면 가장자리 바깥 약 '+BIGMAP.pad+'px 지점'],['장애물','큰 바위 14개 · 가장자리 3곳: 폐허 신전 / 폐허가 된 서부 마을 / 악마의 손바닥(뾰족한 바위) (이동·적 탄환 차단, 아군 공격은 통과)'],['건물 투명화','마을 건물이나 신전 기둥 뒤로 들어가 가려지면 그 건물이 반투명해짐'],['특수 이벤트','낮(더위 게이지)·밤 · 스틸볼런 · 모래폭풍 · 블러드 문'],['상자','부수면 자석 · 고기 · 오아시스 지도(확률 낮음)']]},
+   {id:'wild',group:G0,name:'황야 맵 (큰 맵)',sub:'WILDERNESS',emoji:'🌾',bg:'#1d2316',col:'#e6d37a',desc:'화면 몇 배 크기의 넓은 맵. 카메라가 플레이어를 중앙에 두고 따라다니며, 적은 화면 바로 바깥에서 나타나 플레이어를 쫓아온다. 플레이어에게서 너무 멀어진 적은 다시 가까운 화면 밖으로 재배치된다. 곳곳에 큰 바위가 놓여 있고, 맵 가장자리에는 지붕 없는 파르테논풍 폐허 신전, 건물 9채 중 부서진 건물과 불타는 건물이 있는 폐허 서부 마을, 보랏빛 밤하늘 아래 뾰족한 바위들이 솟은 「악마의 손바닥」이 남서쪽 끝에 자리한다. 각각 바닥에 마법진이 새겨져 있다. 특수 이벤트는 낮·밤(더위), 스틸볼런, 모래폭풍, 블러드 문이 일어나며, 맵 곳곳의 상자를 부수면 아이템이 나온다.',rows:[['맵 크기',BIGMAP.w+' × '+BIGMAP.h+'px (화면의 약 '+(BIGMAP.w/W).toFixed(1)+'배 × '+(BIGMAP.h/H).toFixed(1)+'배)'],['시점','플레이어 중앙 고정 카메라 · 우상단 미니맵'],['적 소환','화면 가장자리 바깥 약 '+BIGMAP.pad+'px 지점'],['장애물','큰 바위 20개 · 가장자리 3곳: 폐허 신전 / 폐허가 된 서부 마을 / 악마의 손바닥(뾰족한 바위) (이동·적 탄환 차단, 아군 공격은 통과)'],['건물 투명화','마을 건물이나 신전 기둥 뒤로 들어가 가려지면 그 건물이 반투명해짐'],['특수 이벤트','낮(더위 게이지)·밤 · 스틸볼런 · 모래폭풍 · 블러드 문'],['상자','부수면 자석 · 고기 · 오아시스 지도(확률 낮음)']]},
   {id:'sky',group:G0,name:'하늘섬 맵 (큰 맵)',sub:'SKY ISLANDS',emoji:'☁️',bg:'#0b0f2c',col:'#b9a3ff',desc:'하늘에 떠 있는 아홉 개의 섬이 나무 다리로 이어진 큰 맵. 카메라가 플레이어를 따라가며 시작 지점은 중앙 대섬의 돌 광장이다. 섬 바깥은 낭떠러지라 지상 적은 다리와 섬을 따라 길을 돌아 쫓아온다. 이곳에서는 특수 이벤트가 번개 폭풍·블러드 문·암전만 일어난다.',rows:[['맵 크기',SKYMAP.WW+' × '+SKYMAP.WH+'px (화면의 약 '+(SKYMAP.WW/W).toFixed(1)+'배 × '+(SKYMAP.WH/H).toFixed(1)+'배)'],['구성','섬 9개 · 다리 12개 · 물길 · 바위'],['시점','플레이어 중앙 고정 카메라 · 우상단 미니맵'],['적 소환','화면 밖 땅 위 (섬이 작으면 다리 건너편에서 걸어옴)'],['특수 이벤트','번개 폭풍 · 블러드 문 · 암전']]},
    {id:'rock',group:G1,name:'바위 벽',sub:'이동 차단',emoji:'🪨',bg:'#13211a',col:'#9aa3b3',desc:'초원 곳곳의 바위. 플레이어와 지상 적은 통과할 수 없고, 적 탄환도 바위에 막혀 사라진다. 적은 벽면을 따라 돌아서 쫓아온다. 아군 공격은 바위를 통과한다.',rows:[['개수','약 12개 (위치 약간 무작위)'],['보스·날벌레','벽을 통과']]},
   fl('thorn','붉은 가시를 두른 꽃. 개화하면 범위 안의 적에게 주기적으로 피해를 준다. 플레이어에게는 해롭지 않다.','범위 내 적에게 '+M.thornDmg+' 피해'),
@@ -4214,7 +4232,7 @@ const MAP_DEX=()=>{
    {id:'skystream',group:G4,name:'물길',sub:'이동 느려짐',emoji:'💧',bg:'#0b0f2c',col:'#5fa8dc',desc:'섬 안쪽 샘에서 흘러나와 섬 가장자리의 폭포로 떨어지는 얕은 물길. 지나갈 수 있지만 물 안에서는 느려진다.',rows:[['이동 속도','플레이어·적 모두 ×'+SKYMAP.WATER_SLOW],['대시','대시 중에도 속도 감소 적용']]},
    {id:'skyrock',group:G4,name:'섬 바위',sub:'이동 차단',emoji:'🪨',bg:'#0b0f2c',col:'#9aa3b3',desc:'섬 곳곳에 놓인 바위. 플레이어와 지상 적은 통과할 수 없고 적 탄환도 막는다. 아군 공격은 바위를 통과한다.',rows:[['개수','섬마다 2~3개 · 중앙 대섬 14개'],['경로','다리와 섬 가장자리는 막지 않도록 배치됨']]},
    {id:'wday',group:G5,name:'낮 · 더위 게이지',sub:'약 '+WEV.dayLen+'초 · 한 판에 한 번',emoji:'☀️',bg:'#3a3320',col:'#ffd36b',desc:'맵이 밝아지고 플레이어에게 더위 게이지가 생긴다. 게이지는 서서히 차오르고 높아질수록 아지랑이가 심해진다. 50%부터 지속 피해를 받는다. 낮이 끝나면 밤이 되어 원래대로 돌아오고 오아시스는 사라진다.',rows:[['지속 피해','50%↑ 초당 0.2 · 75%↑ 1 · 90%↑ 5 · 100% 25'],['물병','먹으면 더위 -'+WEV.bottleHeal+'% · 맵에 최대 '+WEV.bottleMax+'개 · 밤에도 생김'],['오아시스','낮에만 생기는 숨은 샘 · 점선 범위 안에 있으면 게이지가 계속 줄어듦'],['우물','마을 우물의 점선 구역에 '+WEV.wellFill+'초 머물면 더위 전부 회복']]},
-   {id:'wsbr',group:G5,name:'스틸볼런',sub:'약 '+WEV.sbrLen+'초 + 힘 '+WEV.sbrAfter+'초',emoji:'⚰️',bg:'#241b33',col:'#d08cff',desc:'신전·마을·악마의 손바닥의 마법진 위에 유해가 하나씩 생긴다. 점선 구역에 머물면 마법진이 차올라 유해를 얻고, 하늘빛 탄 · 공룡화 · 스탠드 중 서로 다른 능력이 하나씩 깃든다. 얻지 못한 유해는 그 능력을 쓰는 크고 단단한 적이 된다.',rows:[['하늘빛 탄','매우 빠르고 강한 관통탄 자동 발사'],['공룡화','강한 근접 피해 · 받는 피해 80% 감소 · 이동 빠름'],['스탠드','자동 추적 근접 · 물기 + 밟기 범위 공격'],['지속','이벤트 종료 후 '+WEV.sbrAfter+'초 · 특수 적 처치마다 +'+WEV.sbrExt+'초'],['특수 적','체력·방어력 높고 큼 · 능력은 플레이어보다 약함 · 처치 전까지 능력 유지']]},
+   {id:'wsbr',group:G5,name:'스틸볼런',sub:'유해 2개를 겨우 얻는 시간 + 힘 '+WEV.sbrAfter+'초',emoji:'⚰️',bg:'#241b33',col:'#d08cff',desc:'신전·마을·악마의 손바닥의 마법진 위에 유해가 하나씩 생긴다. 점선 구역에 머물면 마법진이 차올라 유해를 얻고, 하늘빛 탄 · 공룡화 · 스탠드 중 서로 다른 능력이 하나씩 깃든다. 얻지 못한 유해는 그 능력을 쓰는 크고 단단한 적이 된다. 제한 시간은 가장 가까운 유해 2개를 최대 속도로 겨우 얻을 수 있는 정도로 시작할 때 계산되며, 위쪽에 시간 바와 능력별 남은 시간이 표시된다.',rows:[['하늘빛 탄','매우 빠르고 강한 관통탄 자동 발사'],['공룡화','강한 근접 피해 · 받는 피해 80% 감소 · 이동 빠름'],['스탠드','자동 추적 근접 · 물기 + 밟기 범위 공격'],['지속','이벤트 종료 후 '+WEV.sbrAfter+'초 · 특수 적 처치마다 +'+WEV.sbrExt+'초'],['특수 적','체력·방어력 높고 큼 · 능력은 플레이어보다 약함 · 처치 전까지 능력 유지']]},
    {id:'wsand',group:G5,name:'모래폭풍',sub:'약 '+WEV.sandLen+'초',emoji:'🌪',bg:'#3a2c18',col:'#e0b46a',desc:'황사가 끼어 시야가 좁아지고 한 방향으로 바람이 분다. 플레이어와 모든 적의 이동 속도가 느려지며, 바람을 거슬러 가면 더 느려지고 바람을 타고 가면 조금 빨라진다.',rows:[['이동 속도','기본 ×0.82 · 바람 반대 방향 ×0.49 · 바람 방향 ×1.15'],['시야','눈보라 정도로 제한'],['바람','화면 위에 방향 표시']]},
    {id:'wchest',group:G5,name:'보물 상자',sub:'부수면 아이템',emoji:'📦',bg:'#2a2214',col:'#c9a063',desc:'맵 곳곳에 생기는 상자. 공격으로 부수면 아이템이 나온다. 지도는 확률이 낮고 나머지는 높다.',rows:[['자석','맵 전체의 경험치를 끌어옴'],['고기','체력 50% 회복'],['오아시스 지도','오아시스 위치가 지도에 표시됨 (낮이 오기 전·낮 동안에만 나옴)'],['개수','맵에 최대 '+WEV.chestMax+'개']]}
  ];
